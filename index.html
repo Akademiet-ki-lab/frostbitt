@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050b16">
+<title>FROSTBITT – Isfiske</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="960" height="600"></canvas>
+
+  <!-- Startskjerm -->
+  <div id="ovTitle" class="overlay withlb show">
+    <div class="lb" id="lbTitle"></div>
+    <h1>FROSTBITT</h1>
+    <div class="sub">Et norsk isfiskeeventyr</div>
+    <div class="ctrl">
+      <b><kbd>←</kbd> <kbd>→</kbd> / <kbd>A</kbd> <kbd>D</kbd></b><span>Gå sidelengs på isen</span>
+      <b>Hold <kbd>SPACE</kbd></b><span>Bor et hull i isen</span>
+      <b><kbd>↓</kbd> / <kbd>S</kbd></b><span>Slipp ned snøret ved hullet</span>
+      <b><kbd>SPACE</kbd> i vannet</b><span>Pilk – rykk kroken opp i rytme for å lokke fisk</span>
+      <b><kbd>↑</kbd> <kbd>↓</kbd> / <kbd>W</kbd> <kbd>S</kbd></b><span>Styr dybden på kroken</span>
+      <b>Trykk <kbd>SPACE</kbd> / <kbd>↑</kbd></b><span>Sveiv inn fisken når det napper</span>
+      <b><kbd>K</kbd> / klikk på kaffe</b><span>Drikk kaffe (varmer opp 3 timer)</span>
+      <b><kbd>F</kbd> / klikk på reven</b><span>Jag bort reven som stjeler fangsten din</span>
+      <b><kbd>P</kbd> · <kbd>M</kbd></b><span>Pause · lyd av/på</span>
+    </div>
+    <div class="tip">Fiskene er usynlige – finn riktig dybde og pilk i rytme til det napper! Poengene dine spares i en lommebok du kan bruke i butikken på bedre stang, pilk, bor, termos og klær. Nye fiskeslag dukker opp i innsjøen for hvert nytt nivå. Bor så mange hull du vil – hvert hull gir 2–3 fisker. Poeng og sjeldne fisker (som Ørret, Røye og Gjedde) gir nytt nivå, og enda større og sjeldnere fisk dukker opp lenger ut. Runden varer 5 timer i spillet (= 5 minutter i virkeligheten) – flest poeng vinner! Nivåene krever mer og mer poeng, og fiskene blir mer motvillige. Jo kaldere det er ute, jo fortere fryser du. Fra nivå 3 kan det blåse opp til snøstorm (du fryser 25 % raskere). Nivå 4 gir blinkende pilk, nivå 6 karbonstang. Fang 5 ulike arter for Artsjeger-bonus (+250p)! Hunden din sover i hundehuset, men løper ut og jager bort reven når den kommer!</div>
+    <div class="rec" id="titleRec"></div>
+    <div class="btnRow"><button id="btnStart">Start Isfiske</button><button id="btnShop" class="ghost">Butikk</button></div>
+    <button id="btnReset" class="link">Nullstill rekord og toppliste</button>
+  </div>
+
+  <!-- Sluttskjerm -->
+  <div id="ovEnd" class="overlay withlb">
+    <div class="lb" id="lbEnd"></div>
+    <h2 id="eTitle">Tiden er ute!</h2>
+    <div class="score">Poengsum: <span id="eScore">0</span></div>
+    <div class="sub" id="eLevel"></div>
+    <div class="newrec" id="eNew"></div>
+    <div class="bonus" id="eBonus"></div>
+    <div class="nameRow">Navn på topplisten: <input id="nameIn" maxlength="12" autocomplete="off"></div>
+    <div id="eTable"></div>
+    <div class="rec" id="eRec"></div>
+    <div class="rec" id="eWallet"></div>
+    <div class="btnRow"><button id="btnAgain">Spill på nytt</button><button id="btnShop2" class="ghost">Butikk</button></div>
+  </div>
+
+  <!-- Butikk -->
+  <div id="ovShop" class="overlay">
+    <h2>Butikk</h2>
+    <div class="wallet">Lommebok: <span id="walletVal">0</span> p</div>
+    <div class="sub" style="margin:0 0 calc(var(--u)*8)">Poengene fra rundene dine kan brukes på bedre utstyr</div>
+    <div id="shopList"></div>
+    <button id="btnShopBack">Tilbake</button>
+  </div>
+
+  <!-- Berøringsknapper (mobil/nettbrett) -->
+  <div id="touch">
+    <div class="tb" id="tcL" style="left:calc(var(--u)*14);bottom:calc(var(--u)*14)">◀</div>
+    <div class="tb" id="tcR" style="left:calc(var(--u)*90);bottom:calc(var(--u)*14)">▶</div>
+    <div class="tb" id="tcU" style="right:calc(var(--u)*112);bottom:calc(var(--u)*88)">▲</div>
+    <div class="tb" id="tcD" style="right:calc(var(--u)*112);bottom:calc(var(--u)*14)">▼</div>
+    <div class="tb lg" id="tcA" style="right:calc(var(--u)*14);bottom:calc(var(--u)*14)">BOR / SVEIV / PILK</div>
+    <div class="tb sm" id="tcK" style="right:calc(var(--u)*14);bottom:calc(var(--u)*110)">KAFFE</div>
+    <div class="tb sm" id="tcF" style="right:calc(var(--u)*14);bottom:calc(var(--u)*172)">JAG REV</div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
