@@ -241,10 +241,10 @@ const AVATARS = {
     legs: '#23366b', legs2: '#2b4180', legBand: null, boot: '#e8e8ec', boot2: '#d6d6dc', sole: '#8a8f98',
     hatA: '#2a6fb0', hatB: '#e8e8ec', hatC: '#1d4f80' }
 };
-// Drikke: kaffe gir få, kraftige kopper – kakao flere, mildere (samme totale varme)
+// Drikke i termosen: kaffe gir få, kraftige slurker – kakao flere, mildere (samme totale varme)
 const DRINKS = {
-  kaffe: { name: 'kaffe', title: 'Kaffe', icon: '☕', cups: 3, heat: 3,    cup: '#f5f1e8', top: '#5b3416', desc: '3 kopper · varmer 3 timer hver' },
-  kakao: { name: 'kakao', title: 'Kakao', icon: '🍫', cups: 4, heat: 2.25, cup: '#d9503a', top: '#8a5230', desc: '4 kopper · varmer 2,25 timer hver' }
+  kaffe: { name: 'kaffe', title: 'Kaffe', cups: 3, heat: 3,    body: '#3b4a52', band: '#c0392b', cap: '#1b2328', desc: '3 slurker · varmer 3 timer hver' },
+  kakao: { name: 'kakao', title: 'Kakao', cups: 4, heat: 2.25, body: '#6b3a2a', band: '#f2e6d0', cap: '#e8d9bd', desc: '4 slurker · varmer 2,25 timer hver' }
 };
 let sel = { avatar: 'skuter', drink: 'kaffe' };
 const dn = () => DRINKS[sel.drink].name;
@@ -270,8 +270,8 @@ const SHOP = {
     { name: 'Kraftig isbor', price: 400,  desc: 'Bor hull på 1,9 sekunder' },
     { name: 'Motorbor',      price: 1200, desc: 'Bor hull på 1,2 sekunder' } ] },
   thermos: { name: 'Termos', tiers: [
-    { name: 'Stor termos',   price: 500,  desc: '+1 ekstra kopp' },
-    { name: 'Dobbel termos', price: 1400, desc: '+2 ekstra kopper' } ] },
+    { name: 'Stor termos',   price: 500,  desc: '+1 ekstra slurk' },
+    { name: 'Dobbel termos', price: 1400, desc: '+2 ekstra slurker' } ] },
   suit:    { name: 'Klær', tiers: [
     { name: 'Ullundertøy',         price: 600,  desc: 'Du fryser 10 % saktere' },
     { name: 'Isolert vinterdress', price: 1600, desc: 'Du fryser 20 % saktere' } ] }
@@ -757,7 +757,7 @@ function renderPick() {
   Object.keys(DRINKS).forEach(k => {
     const d = DRINKS[k];
     const b = document.createElement('button'); b.className = 'drinkCard' + (sel.drink === k ? ' on' : '');
-    const t = document.createElement('b'); t.textContent = d.icon + '  ' + d.title;
+    const t = document.createElement('b'); t.appendChild(thermosSvg(k, 14)); t.appendChild(document.createTextNode('  ' + d.title));
     const sm = document.createElement('small'); sm.textContent = d.desc;
     b.appendChild(t); b.appendChild(sm);
     b.addEventListener('click', e => { e.currentTarget.blur(); sel.drink = k; saveSel(); renderPick(); });
@@ -1301,6 +1301,17 @@ function limb(c, x1, y1, x2, y2, w, col) {
   c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
 }
 
+// Termos (stående, i hånden eller liggende når den er tom)
+function drawThermos(c, dk, x, y, rot, s) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.scale(s, s);
+  rect(c, -3, -12, 6, 12, dk.body);
+  rect(c, -3, -5, 6, 2.2, dk.band);
+  rect(c, -3.5, -15, 7, 3.2, dk.cap);
+  rect(c, -1.5, -16.5, 3, 1.6, dk.cap);
+  rect(c, -2, -11, 1, 8, 'rgba(255,255,255,.28)');
+  c.restore();
+}
+
 // Avatar-deler: brukes både i spillet og i forhåndsvisningen på valgskjermen
 function avLegs(c, av, sitting, ls) {
   if (sitting) {
@@ -1478,6 +1489,12 @@ function drawFisher() {
     rect(c, LOCAL_FRONT - 9 * Math.abs(a) - 1, handleY - 2, 18 * Math.abs(a) + 2, 4, '#6b4a2b');
   }
 
+  // Termosen står på isen bak stolen (ligger veltet når den er tom)
+  if (!frozen && p.drinkTimer <= 0) {
+    if (game.coffee > 0) drawThermos(c, DRINKS[sel.drink], -27, 0, 0, 1);
+    else drawThermos(c, DRINKS[sel.drink], -24, -3.5, 1.45, 1);
+  }
+
   // Campingstol (når fiskeren sitter og fisker)
   const dy = 6 * p.sit;
   if (p.sit > .02 && !frozen) {
@@ -1513,13 +1530,10 @@ function drawFisher() {
   // Fremre arm
   avArm(c, av, 3, fh, false, skin);
 
-  // Kaffekopp
+  // Termos i hånden mens du drikker
   if (cup) {
-    const dk = DRINKS[sel.drink];
-    rect(c, cup.x - 1, cup.y - 4, 7, 8, dk.cup);
-    rect(c, cup.x - 1, cup.y - 4, 7, 2, dk.top);
-    if (sel.drink === 'kakao') { c.fillStyle = '#fff'; c.fillRect(cup.x, cup.y - 5, 2, 1.5); c.fillRect(cup.x + 3, cup.y - 5, 2, 1.5); }   // marshmallows
-    c.strokeStyle = dk.cup; c.lineWidth = 1.5; c.beginPath(); c.arc(cup.x + 7, cup.y, 2.5, -1.5, 1.5); c.stroke();
+    const e = clamp(Math.min((1 - p.drinkTimer / 1.2) / .3, p.drinkTimer / 1.2 / .2, 1), 0, 1);
+    drawThermos(c, DRINKS[sel.drink], cup.x + 3, cup.y + 7, .95 * e, .95);
   }
 
   c.restore();
@@ -2297,7 +2311,7 @@ bindTouch('tcA', 'space'); bindTouch('tcK', null, tryDrink); bindTouch('tcF', nu
 // Statuskort rundt scenen (DOM): tid, kroppstemperatur, poeng, fangst osv.
 // ---------------------------------------------------------------------
 const dom = {};
-['hudTime', 'hudTimeSub', 'hudTemp', 'hudCold', 'hudTempBar', 'chipCoffee', 'hudScore', 'hudLevel', 'hudLevelBar', 'nowTag', 'nowText', 'nowBar',
+['chipIco', 'chipTxt', 'hudTime', 'hudTimeSub', 'hudTemp', 'hudCold', 'hudTempBar', 'chipCoffee', 'hudScore', 'hudLevel', 'hudLevelBar', 'nowTag', 'nowText', 'nowBar',
  'catchChips', 'catchCount', 'sceneL', 'sceneR', 'chipWallet', 'btnPause', 'btnMute'].forEach(id => dom[id] = $(id));
 let domT = 0, lastCatchVer = -1;
 const mmss = sec => { const r = Math.ceil(Math.max(0, sec)); return String(Math.floor(r / 60)).padStart(2, '0') + ':' + String(r % 60).padStart(2, '0'); };
@@ -2313,6 +2327,19 @@ function fishSvg(T) {
   return svg;
 }
 
+function thermosSvg(key, w) {
+  const dk = DRINKS[key], ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 12 22'); svg.setAttribute('width', w); svg.setAttribute('height', Math.round(w * 22 / 12));
+  [[3, 0, 6, 1.8, dk.cap], [1, 2.5, 10, 3.5, dk.cap], [1.5, 6, 9, 16, dk.body], [1.5, 13, 9, 3, dk.band]].forEach(([x, y, ww, hh, col]) => {
+    const r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', ww); r.setAttribute('height', hh); r.setAttribute('fill', col); r.setAttribute('rx', 1);
+    svg.appendChild(r);
+  });
+  return svg;
+}
+let lastIcoDrink = '';
+
 function updateDom(dt) {
   domT -= dt; if (domT > 0) return; domT = .1;
   const playing = mode === 'play' || mode === 'frozen' || mode === 'over';
@@ -2327,7 +2354,8 @@ function updateDom(dt) {
   dom.hudTempBar.style.width = (tf * 100) + '%';
   dom.hudTempBar.style.backgroundSize = (100 / Math.max(tf, .05)) + '% 100%';
   const cups = mode === 'title' ? DRINKS[sel.drink].cups + shop.thermos : game.coffee;     // på startskjermen: valgt drikke
-  dom.chipCoffee.textContent = DRINKS[sel.drink].icon + ' ' + cups + (cups === 1 ? ' kopp ' : ' kopper ') + dn() + ' (K)';
+  if (lastIcoDrink !== sel.drink) { lastIcoDrink = sel.drink; dom.chipIco.textContent = ''; dom.chipIco.appendChild(thermosSvg(sel.drink, 9)); }
+  dom.chipTxt.textContent = 'Termos: ' + cups + (cups === 1 ? ' slurk ' : ' slurker ') + dn() + ' (K)';
   dom.chipCoffee.disabled = cups <= 0;
   dom.chipCoffee.classList.toggle('hot', mode === 'play' && game.cold >= 3.6 && game.coffee > 0);
 
