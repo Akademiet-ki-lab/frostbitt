@@ -29,6 +29,7 @@ const COFFEE_HEAT = 3;                // en kopp kaffe tar kulden 3 timer tilbak
 const DRILL_TIME = 2.5;               // sekunder å bore et hull
 const TARGET_FISH = 12;               // antall fisker i vannet
 const KENNEL_X = 740, KENNEL_Y = 229, KENNEL_S = .7;   // lite hundehus på land, like ved hytta
+const MONO = 'ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace';
 const FONT = '"Inter","SF Pro Display","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif';
 const SHADOW = 'rgba(2,12,30,0.58)';  // fargen på fiskesilhuettene
 
@@ -1385,7 +1386,7 @@ function rr(x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
 function txt(s, x, y, size, col, align, out) {
-  ctx.font = 'bold ' + size + 'px ' + FONT;
+  ctx.font = 'bold ' + size + 'px ' + (size <= 14 ? MONO : FONT);      // små etiketter i monospace som resten av grensesnittet
   ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic';
   if (out !== null) {
     ctx.lineWidth = Math.max(2, size / 5); ctx.strokeStyle = out || 'rgba(5,15,30,.75)'; ctx.lineJoin = 'round';
@@ -1570,13 +1571,13 @@ function drawStormHaze() {
 // Lite varsel og nedtelling under snøstorm
 function drawStormUI() {
   if (game.storm <= 0) return;
-  panel(W - 222, 40, 206, 26, 13, 'rgba(191,227,255,.7)', 'rgba(20,50,80,.85)');
-  const cx = W - 206, cy = 53;
+  panel(W - 270, 40, 254, 26, 13, 'rgba(191,227,255,.55)', 'rgba(14,40,56,.92)');
+  const cx = W - 254, cy = 53;
   ctx.strokeStyle = '#dff1ff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
   ctx.beginPath();
   for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.moveTo(cx - Math.cos(a) * 6, cy - Math.sin(a) * 6); ctx.lineTo(cx + Math.cos(a) * 6, cy + Math.sin(a) * 6); }
   ctx.stroke();
-  txt('SNØSTORM  ' + Math.ceil(game.storm) + ' s  ·  +25 % kulde', W - 194, 57, 11, '#dff1ff', 'left', null);
+  txt('SNØSTORM  ' + Math.ceil(game.storm) + ' s  ·  +25 % kulde', W - 242, 57, 11, '#dff1ff', 'left', null);
   if (game.stormAlert > 0) {
     ctx.globalAlpha = clamp(game.stormAlert, 0, 1);
     ctx.save(); ctx.shadowColor = 'rgba(160,210,255,.9)'; ctx.shadowBlur = 18;
@@ -1769,13 +1770,13 @@ function drawHoleMarkers() {
 // Glass-panel: myk skygge, halvgjennomsiktig fyll, glans og tynn kant
 function panel(x, y, w, h, r, accent, tint) {
   ctx.save();
-  ctx.shadowColor = 'rgba(0,8,28,.5)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 4;
-  rr(x, y, w, h, r); ctx.fillStyle = tint || 'rgba(12,30,62,.6)'; ctx.fill();
+  ctx.shadowColor = 'rgba(0,8,14,.55)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 4;
+  rr(x, y, w, h, r); ctx.fillStyle = tint || 'rgba(9,27,36,.9)'; ctx.fill();
   ctx.restore();
   const g = ctx.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, 'rgba(255,255,255,.17)'); g.addColorStop(1, 'rgba(255,255,255,.02)');
+  g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(1, 'rgba(255,255,255,.01)');
   rr(x, y, w, h, r); ctx.fillStyle = g; ctx.fill();
-  rr(x + .5, y + .5, w - 1, h - 1, r); ctx.strokeStyle = accent || 'rgba(255,255,255,.26)'; ctx.lineWidth = 1.2; ctx.stroke();
+  rr(x + .5, y + .5, w - 1, h - 1, r); ctx.strokeStyle = accent || 'rgba(255,255,255,.14)'; ctx.lineWidth = 1; ctx.stroke();
 }
 // Liten etikett med bokstavavstand
 function lbl(s, x, y, col, align) {
@@ -1823,7 +1824,6 @@ function getHint() {
 }
 
 // Statuskortene ligger nå rundt scenen (se updateDom). Her tegnes bare meldinger og hint i selve scenen.
-const MONO = 'ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace';
 function drawHUD() {
   // ---- Meldinger (små "toast"-piller) ----
   let y = 40, shown = 0;
@@ -1873,7 +1873,7 @@ function drawJigUI() {
   const x = clamp(p.hole.x + p.dir * 112, 100, 790), bw = 150, bh = 12, by = ICE_TOP - 60;
   panel(x - bw / 2 - 12, by - 24, bw + 24, bh + 56, 14);
   lbl('PILKING', x - bw / 2, by - 8);
-  txt(game.jigE > .6 ? 'Fisken er nysgjerrig!' : 'SPACE i rytme', x + bw / 2, by - 7, 11, game.jigE > .6 ? '#7dff9b' : 'rgba(210,235,250,.9)', 'right', null);
+  txt(game.jigE > .6 ? 'Nysgjerrig!' : 'SPACE i rytme', x + bw / 2, by - 7, 11, game.jigE > .6 ? '#7dff9b' : 'rgba(210,235,250,.9)', 'right', null);
   ctx.fillStyle = 'rgba(0,0,0,.4)'; rr(x - bw / 2, by, bw, bh, bh / 2); ctx.fill();
   const g = ctx.createLinearGradient(x - bw / 2, 0, x + bw / 2, 0);
   g.addColorStop(0, '#8fd3ff'); g.addColorStop(1, '#ffe08a');
@@ -1914,6 +1914,14 @@ function drawBanner() {
   txt('Nivå ' + game.level + '  –  ' + game.bannerText, 0, 34, 20, '#ffffff', 'center');
   ctx.restore();
   ctx.globalAlpha = 1;
+}
+
+// Felles fargetone (dyp blågrønn) og myk mørk kant slik at scenen passer med resten av siden
+function drawGrade() {
+  ctx.fillStyle = 'rgba(8,46,58,.10)'; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W / 2, H / 2, 260, W / 2, H / 2, 640);
+  g.addColorStop(0, 'rgba(3,12,18,0)'); g.addColorStop(1, 'rgba(3,12,18,.38)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
 
 function drawVignette() {
@@ -2013,6 +2021,7 @@ function render() {
   drawStormHaze();
   drawPopups();
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  drawGrade();
   drawVignette();
   if (mode === 'play') drawDrillMeter();
   if (mode === 'play' || mode === 'frozen' || mode === 'over') drawHUD();
