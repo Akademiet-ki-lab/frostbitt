@@ -25,7 +25,6 @@ const bodyTemp = () => TEMP_NORMAL - clamp(game.cold / 5, 0, 1) * (TEMP_NORMAL -
 const ROUND_TIME = 5 * GAME_HOUR;     // runden varer 5 spilltimer = 5 minutter
 const levelNeed = L => 30 * L * (L + 1);   // totalpoeng som trengs for å nå nivå L+1: 60, 180, 360, 600, 900 …
 const MAX_COLD = 5;                   // 5 timer uten varme = død
-const COFFEE_HEAT = 3;                // en kopp kaffe tar kulden 3 timer tilbake
 const DRILL_TIME = 2.5;               // sekunder å bore et hull
 const TARGET_FISH = 12;               // antall fisker i vannet
 const KENNEL_X = 740, KENNEL_Y = 229, KENNEL_S = .7;   // lite hundehus på land, like ved hytta
@@ -215,6 +214,45 @@ const player = {};
 let holes = [], fishes = [], parts = [], bubbles = [], popups = [], logs = [], flakes = [], stormFlakes = [], clouds = [];
 let best = { score: 0 };
 
+// Avatarer (klær) og drikke man velger før runden
+const AVATARS = {
+  skuter: { name: 'Skuterdress', pattern: 'suit', hat: 'fur',
+    jacket: '#2a2f3a', jacketD: '#1d212a', armUp: '#f08a24', armUpD: '#c26c16', accent: '#f08a24',
+    legs: '#2a2f3a', legs2: '#323845', legBand: '#ffd34d', boot: '#15171c', boot2: '#1d2026', sole: '#6b7078',
+    hatA: '#7b5333', hatB: '#a07848', hatC: '#573820' },
+  rutet:  { name: 'Ullskjorte', pattern: 'plaid', hat: 'beanie',
+    jacket: '#a8322b', jacketD: '#7f2420', armUp: '#a8322b', armUpD: '#7f2420', accent: '#1d1d1f',
+    legs: '#35508a', legs2: '#3d5c9c', legBand: null, boot: '#4a3020', boot2: '#3b2618', sole: '#2a1a10',
+    hatA: '#b8322b', hatB: '#f2eee8', hatC: '#7f2420' },
+  selbu:  { name: 'Selbu-genser', pattern: 'sweater', hat: 'topplue',
+    jacket: '#1f2f57', jacketD: '#16213f', armUp: '#1f2f57', armUpD: '#16213f', accent: '#e8e3d6',
+    legs: '#5a5e66', legs2: '#666a73', legBand: null, boot: '#1c1c20', boot2: '#232329', sole: '#7a7e86',
+    hatA: '#1f2f57', hatB: '#e8e3d6', hatC: '#c0392b' },
+  parka:  { name: 'Grønn parka', pattern: 'parka', hat: 'hood',
+    jacket: '#4d6b3a', jacketD: '#3a5229', armUp: '#4d6b3a', armUpD: '#3a5229', accent: '#2e3f20',
+    legs: '#6b6340', legs2: '#756c46', legBand: null, boot: '#4a3020', boot2: '#3b2618', sole: '#2a1a10',
+    hatA: '#4d6b3a', hatB: '#e9e4da', hatC: '#3a5229' },
+  puffer: { name: 'Gul pufferjakke', pattern: 'puffer', hat: 'beanie',
+    jacket: '#f2c230', jacketD: '#c99a18', armUp: '#f2c230', armUpD: '#c99a18', accent: '#c99a18',
+    legs: '#23366b', legs2: '#2b4180', legBand: null, boot: '#e8e8ec', boot2: '#d6d6dc', sole: '#8a8f98',
+    hatA: '#2a6fb0', hatB: '#e8e8ec', hatC: '#1d4f80' }
+};
+// Drikke: kaffe gir få, kraftige kopper – kakao flere, mildere (samme totale varme)
+const DRINKS = {
+  kaffe: { name: 'kaffe', title: 'Kaffe', icon: '☕', cups: 3, heat: 3,    cup: '#f5f1e8', top: '#5b3416', desc: '3 kopper · varmer 3 timer hver' },
+  kakao: { name: 'kakao', title: 'Kakao', icon: '🍫', cups: 4, heat: 2.25, cup: '#d9503a', top: '#8a5230', desc: '4 kopper · varmer 2,25 timer hver' }
+};
+let sel = { avatar: 'skuter', drink: 'kaffe' };
+const dn = () => DRINKS[sel.drink].name;
+function loadSel() {
+  try {
+    const b = JSON.parse(localStorage.getItem('frostbitt_valg'));
+    if (b && AVATARS[b.avatar]) sel.avatar = b.avatar;
+    if (b && DRINKS[b.drink]) sel.drink = b.drink;
+  } catch (e) {}
+}
+function saveSel() { try { localStorage.setItem('frostbitt_valg', JSON.stringify(sel)); } catch (e) {} }
+
 // Butikk: poeng fra rundene samles i en lommebok og brukes på bedre utstyr (lagres i nettleseren)
 const SHOP = {
   rod:     { name: 'Fiskestang', tiers: [
@@ -228,8 +266,8 @@ const SHOP = {
     { name: 'Kraftig isbor', price: 400,  desc: 'Bor hull på 1,9 sekunder' },
     { name: 'Motorbor',      price: 1200, desc: 'Bor hull på 1,2 sekunder' } ] },
   thermos: { name: 'Termos', tiers: [
-    { name: 'Stor termos',   price: 500,  desc: '+1 kopp kaffe (4 totalt)' },
-    { name: 'Dobbel termos', price: 1400, desc: '+2 kopper kaffe (5 totalt)' } ] },
+    { name: 'Stor termos',   price: 500,  desc: '+1 ekstra kopp' },
+    { name: 'Dobbel termos', price: 1400, desc: '+2 ekstra kopper' } ] },
   suit:    { name: 'Klær', tiers: [
     { name: 'Ullundertøy',         price: 600,  desc: 'Du fryser 10 % saktere' },
     { name: 'Isolert vinterdress', price: 1600, desc: 'Du fryser 20 % saktere' } ] }
@@ -247,7 +285,7 @@ function saveShop() { try { localStorage.setItem('frostbitt_butikk', JSON.string
 
 function resetGame() {
   Object.assign(game, {
-    time: 0, cold: 0, coffee: 3 + shop.thermos, coffeeMax: 3 + shop.thermos, rodCrank: [1, 1.15, 1.3, 1.45][shop.rod], rodBite: [1, 1, 1.1, 1.2][shop.rod], jigE: 0, jigOff: 0, lastJig: -9, score: 0, caught: {}, totalCaught: 0,
+    time: 0, cold: 0, coffee: DRINKS[sel.drink].cups + shop.thermos, coffeeMax: DRINKS[sel.drink].cups + shop.thermos, rodCrank: [1, 1.15, 1.3, 1.45][shop.rod], rodBite: [1, 1, 1.1, 1.2][shop.rod], jigE: 0, jigOff: 0, lastJig: -9, score: 0, caught: {}, totalCaught: 0,
     fight: null, hookDepth: 0, hookVisY: ICE_BOT, napp: 0, flash: 0,
     noExitUntil: 0, spawnT: 2, freezeT: 0, lastStage: 0, hintFlash: 0,
     catchLog: [], catchVer: 0, wind: 'NORDAVIND', storm: 0, stormT: rnd(15, 30), stormI: 0, stormAlert: 0, hintMsg: '', hintMsgT: 0, seen: {}, speciesBonus: 0, shake: 0, endReason: '', dog: { x: KENNEL_X, dir: 1, state: 'idle', t: 0, runT: 0, moving: false }, pile: [], pileX: W / 2 - 70, fox: null, foxT: rnd(25, 35), stolen: 0, level: 1, banner: 0, bannerText: '', nibble: 0
@@ -425,13 +463,13 @@ function exitFishing() {
 
 function tryDrink() {
   if (mode !== 'play' || paused || player.drinkTimer > 0) return;
-  if (game.coffee <= 0) { log('Termosen er tom! Ingen mer kaffe…', '#ff8f8f'); sfx.empty(); return; }
+  if (game.coffee <= 0) { log('Termosen er tom! Ingen mer ' + dn() + '…', '#ff8f8f'); sfx.empty(); return; }
   game.coffee--;
-  game.cold = Math.max(0, game.cold - COFFEE_HEAT);
+  game.cold = Math.max(0, game.cold - DRINKS[sel.drink].heat);
   game.lastStage = skinStage(game.cold);
   player.drinkTimer = 1.2;
   sfx.slurp();
-  log('Mmm… varm kaffe! Du føler deg bedre. (' + game.coffee + ' igjen)', '#ffd08a');
+  log('Mmm… varm ' + dn() + '! Du føler deg bedre. (' + game.coffee + ' igjen)', '#ffd08a');
 }
 
 function startFight(f) {
@@ -652,6 +690,7 @@ function startGame() {
   mode = 'play'; paused = false;
   $('ovTitle').classList.remove('show');
   $('ovEnd').classList.remove('show');
+  $('ovPick').classList.remove('show');
   log('Velkommen! Hold SPACE for å bore et hull.', '#9fe3ff');
   sfx.click();
 }
@@ -698,6 +737,39 @@ function closeShop() {
   $('ovShop').classList.remove('show');
   if (shopFrom === 'end') { $('eWallet').textContent = walletText() + ' – bruk dem i butikken'; $('ovEnd').classList.add('show'); }
   else { showTitle(); $('ovTitle').classList.add('show'); }
+}
+
+function renderPick() {
+  const row = $('avRow'); row.textContent = '';
+  Object.keys(AVATARS).forEach(k => {
+    const b = document.createElement('button'); b.className = 'avCard' + (sel.avatar === k ? ' on' : '');
+    const cv = document.createElement('canvas'); cv.width = 96; cv.height = 124; drawAvatarPreview(cv, k);
+    const n = document.createElement('span'); n.textContent = AVATARS[k].name;
+    b.appendChild(cv); b.appendChild(n);
+    b.addEventListener('click', e => { e.currentTarget.blur(); sel.avatar = k; saveSel(); renderPick(); });
+    row.appendChild(b);
+  });
+  const dr = $('drinkRow'); dr.textContent = '';
+  Object.keys(DRINKS).forEach(k => {
+    const d = DRINKS[k];
+    const b = document.createElement('button'); b.className = 'drinkCard' + (sel.drink === k ? ' on' : '');
+    const t = document.createElement('b'); t.textContent = d.icon + '  ' + d.title;
+    const sm = document.createElement('small'); sm.textContent = d.desc;
+    b.appendChild(t); b.appendChild(sm);
+    b.addEventListener('click', e => { e.currentTarget.blur(); sel.drink = k; saveSel(); renderPick(); });
+    dr.appendChild(b);
+  });
+}
+let pickFrom = 'title';
+function openPick(from) {
+  pickFrom = from;
+  $('ovTitle').classList.remove('show'); $('ovEnd').classList.remove('show');
+  renderPick();
+  $('ovPick').classList.add('show');
+}
+function closePick() {
+  $('ovPick').classList.remove('show');
+  if (pickFrom === 'end') $('ovEnd').classList.add('show'); else { showTitle(); $('ovTitle').classList.add('show'); }
 }
 
 function showTitle() {
@@ -815,7 +887,7 @@ function updateFox(dt) {
 // Snøstorm: fra nivå 3 blåser det av og til opp i 20 sekunder
 function startStorm() {
   game.storm = 20; game.stormAlert = 3;
-  log('SNØSTORM! Du fryser 25 % raskere – drikk kaffe!', '#bfe3ff');
+  log('SNØSTORM! Du fryser 25 % raskere – drikk ' + dn() + '!', '#bfe3ff');
   sfx.gust(); windStart();
 }
 function updateStorm(dt) {
@@ -842,8 +914,8 @@ function updatePlay(dt) {
   if (st > game.lastStage) {
     game.lastStage = st;
     if (st === 1) log('Du begynner å fryse… ansiktet blir blekt.', '#e8ddd0');
-    if (st === 2) log('Fingrene dine blir lyseblå! Du trenger kaffe!', '#8fd3ff');
-    if (st === 3) log(game.coffee > 0 ? 'Du er knallblå! Drikk kaffe NÅ (K)!' : 'Du er knallblå og termosen er tom!', '#4d95ff');
+    if (st === 2) log('Fingrene dine blir lyseblå! Du trenger ' + dn() + '!', '#8fd3ff');
+    if (st === 3) log(game.coffee > 0 ? 'Du er knallblå! Drikk ' + dn() + ' NÅ (K)!' : 'Du er knallblå og termosen er tom!', '#4d95ff');
   }
   if (game.cold >= MAX_COLD) { beginEnding('frozen'); return; }
   if (game.time >= ROUND_TIME) { beginEnding('time'); return; }
@@ -1225,6 +1297,117 @@ function limb(c, x1, y1, x2, y2, w, col) {
   c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
 }
 
+// Avatar-deler: brukes både i spillet og i forhåndsvisningen på valgskjermen
+function avLegs(c, av, sitting, ls) {
+  if (sitting) {
+    rect(c, -6, -15, 15, 5, av.legs);                    // lår
+    rect(c, 5, -15, 5, 12, av.legs2);                    // legg
+    if (av.legBand) rect(c, 5, -9, 5, 2, av.legBand);
+    rect(c, 4, -4, 11, 4, av.boot); rect(c, 4, -1, 11, 1.5, av.sole);
+  } else {
+    rect(c, -6 + ls, -18, 5, 12, av.legs); if (av.legBand) rect(c, -6 + ls, -12, 5, 2, av.legBand);
+    rect(c, -8 + ls, -6, 9, 6, av.boot); rect(c, -8 + ls, -1.5, 9, 1.5, av.sole);
+    rect(c, 1 - ls, -18, 5, 12, av.legs2); if (av.legBand) rect(c, 1 - ls, -12, 5, 2, av.legBand);
+    rect(c, -1 - ls, -6, 10, 6, av.boot2); rect(c, -1 - ls, -1.5, 10, 1.5, av.sole);
+  }
+}
+function avArm(c, av, sx, h, back, skin) {
+  limb(c, sx, -38, h.x, h.y, 6, back ? av.jacketD : av.jacket);
+  limb(c, sx, -38, sx + (h.x - sx) * .35, -38 + (h.y + 38) * .35, 6, back ? av.armUpD : av.armUp);
+  rect(c, h.x - 2.5, h.y - 2.5, 5, 5, skin);
+}
+function avTorso(c, av) {
+  rect(c, -9, -40, 18, 24, av.jacket);
+  if (av.pattern === 'suit') {
+    rect(c, -9, -40, 18, 9, av.accent);                   // oransje overdel
+    rect(c, -9, -29, 18, 2, '#ffd34d'); rect(c, -9, -21, 18, 2, '#ffd34d');   // reflekstriper
+    rect(c, 0, -31, 1.5, 15, '#55606e');                  // glidelås
+    rect(c, 4, -26, 4, 4, '#1d212a');                     // brystlomme
+    rect(c, -8, -43, 16, 4, av.jacket); rect(c, -8, -43, 16, 1.5, av.accent);   // høy krage
+  } else if (av.pattern === 'plaid') {
+    c.fillStyle = 'rgba(20,20,22,.5)';
+    for (let x = -9; x < 9; x += 6) c.fillRect(x + 1, -40, 2, 24);
+    for (let y = -40; y < -16; y += 6) c.fillRect(-9, y + 1, 18, 2);
+    c.fillStyle = 'rgba(240,225,200,.22)';
+    for (let x = -9; x < 9; x += 6) c.fillRect(x + 4, -40, 1, 24);
+    rect(c, -9, -19, 18, 3, av.jacketD);
+    for (let y = -37; y < -19; y += 6) rect(c, 0, y, 1.6, 1.6, '#efe7d4');   // knapper
+    rect(c, 3, -35, 5, 5, av.jacketD);                    // brystlomme
+    rect(c, -8, -43, 16, 4, '#efe7d4'); rect(c, -8, -41, 16, 1, av.jacketD);   // krage
+  } else if (av.pattern === 'sweater') {
+    rect(c, -9, -19, 18, 3, av.accent);                   // ribbet bunn
+    rect(c, -9, -37, 18, 5, av.accent);                   // mønsterbånd
+    for (let x = -7; x < 8; x += 4) { rect(c, x, -35.5, 2, 2, av.hatC); rect(c, x + 2, -34.5, 2, 2, av.jacket); }
+    rect(c, -9, -27, 18, 3, av.accent);
+    for (let x = -7; x < 8; x += 4) rect(c, x, -26, 2, 1.5, av.jacket);
+    for (let x = -8; x < 9; x += 4) rect(c, x, -31, 1.5, 1.5, av.accent);
+    rect(c, -8, -43, 16, 4, av.accent); rect(c, -8, -41.5, 16, 1, av.jacketD);   // rullekrage
+  } else if (av.pattern === 'parka') {
+    rect(c, 0, -40, 1.6, 24, av.accent);                  // glidelås
+    rect(c, -9, -29, 18, 1.8, av.jacketD);                // snøring i livet
+    rect(c, -8, -26, 6, 7, av.jacketD); rect(c, 2, -26, 6, 7, av.jacketD);   // lommer
+    rect(c, -9, -18, 18, 2, av.jacketD);
+    rect(c, -8, -43, 16, 4, av.jacketD);
+  } else {                                                // puffer
+    c.fillStyle = av.accent;
+    for (let y = -36; y < -16; y += 5) c.fillRect(-9, y, 18, 1);
+    rect(c, 0, -40, 1.6, 24, '#8a6a10');
+    rect(c, -8, -43, 16, 4, av.jacketD); rect(c, -8, -43, 16, 1.2, av.accent);
+  }
+}
+function avHead(c, av, skin, stage, frozen) {
+  if (av.hat === 'hood') { c.fillStyle = av.hatA; c.beginPath(); c.ellipse(-2, -53, 12, 15.5, 0, 0, 6.3); c.fill(); }   // hetta bak hodet
+  rect(c, -6, -57, 12, 14, skin);
+  rect(c, 6, -52, 2, 3, skin);                                      // nese
+  if (stage >= 3) rect(c, 6, -50, 2, 3, '#d6f3ff');                 // isdrope på nesen
+  if (frozen) { rect(c, 2, -52, 3, 1, '#102030'); rect(c, 1, -46, 4, 1, '#102030'); }
+  else {
+    rect(c, 2, -52, 2, 2, '#1a1a1a');
+    rect(c, 1, -46, 4, 1, stage >= 2 ? '#1c3f8a' : '#8a4a3a');      // munn (blå lepper når kald)
+  }
+  if (stage === 0) rect(c, -1, -48, 2, 1, 'rgba(255,120,120,.5)');
+  if (av.hat === 'fur') {                                           // pelslue med øreklaffer
+    const FUR = av.hatA, FUR_L = av.hatB, FUR_D = av.hatC;
+    c.fillStyle = FUR; c.beginPath(); c.ellipse(0, -62, 10.5, 8, 0, 0, 6.3); c.fill();
+    rect(c, -10, -61, 20, 6, FUR_L);
+    c.fillStyle = FUR_L;
+    for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(-9 + i * 4.5, -55); c.lineTo(-6.75 + i * 4.5, -53); c.lineTo(-4.5 + i * 4.5, -55); c.closePath(); c.fill(); }
+    rect(c, -9, -58, 9, 15, FUR);
+    c.fillStyle = FUR_L;
+    for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-9 + i * 3, -43); c.lineTo(-7.5 + i * 3, -40); c.lineTo(-6 + i * 3, -43); c.closePath(); c.fill(); }
+    c.fillStyle = FUR_D;
+    [[-6, -66], [2, -68], [6, -64], [-3, -60], [4, -59], [-7, -52], [-4, -47], [-2, -56]].forEach(([x, y]) => c.fillRect(x, y, 2, 2));
+  } else if (av.hat === 'beanie' || av.hat === 'topplue') {         // strikkelue
+    const tall = av.hat === 'topplue' ? 3 : 0;
+    c.fillStyle = av.hatA; c.beginPath(); c.ellipse(0, -62 - tall * .3, 10, 8.5 + tall * .5, 0, 0, 6.3); c.fill();
+    rect(c, -8, -58, 7, 13, av.hatA);                               // dekker øret
+    rect(c, -10, -60, 20, 5, av.hatB);                              // brett
+    c.fillStyle = av.hatC;
+    if (av.hat === 'topplue') for (let i = 0; i < 6; i++) { c.fillRect(-9 + i * 3.4, -59, 1.6, 1.6); c.fillRect(-7.3 + i * 3.4, -57, 1.6, 1.6); }
+    else for (let i = 0; i < 7; i++) c.fillRect(-9 + i * 3, -60, 1, 5);
+    c.fillStyle = av.hat === 'topplue' ? av.hatC : av.hatB;
+    c.beginPath(); c.arc(0, -70 - tall * .4, 4, 0, 6.3); c.fill();   // dusk
+  } else if (av.hat === 'hood') {                                   // pelskant rundt ansiktet
+    c.strokeStyle = av.hatB; c.lineWidth = 4.5; c.lineCap = 'round';
+    c.beginPath(); c.ellipse(-1, -53, 9.5, 12.5, 0, Math.PI * 1.02, Math.PI * 2.2); c.stroke();
+    c.fillStyle = av.hatC;
+    [[-9, -62], [0, -66], [7, -60]].forEach(([x, y]) => c.fillRect(x, y, 1.5, 1.5));
+  }
+  if (stage >= 2) { c.fillStyle = 'rgba(255,255,255,.85)'; [[-5, -67], [3, -66], [-8, -58], [7, -61], [-3, -50]].forEach(([x, y]) => c.fillRect(x, y, 1.5, 1.5)); }   // rim
+}
+// Forhåndsvisning av en avatar (valgskjermen)
+function drawAvatarPreview(cv, key) {
+  const c = cv.getContext('2d'), av = AVATARS[key], skin = SKIN[0];
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+  c.translate(cv.width / 2, cv.height - 10); c.scale(1.45, 1.45);
+  c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(0, 1, 18, 3, 0, 0, 6.3); c.fill();
+  avLegs(c, av, false, 0);
+  avArm(c, av, -3, { x: -3, y: -22 }, true, skin);
+  avTorso(c, av);
+  avHead(c, av, skin, 0, false);
+  avArm(c, av, 3, { x: 3, y: -22 }, false, skin);
+}
+
 function drawFisher() {
   const c = ctx, p = player, cold = game.cold;
   const frozen = (mode === 'frozen' || mode === 'over') && game.endReason === 'frozen';
@@ -1232,7 +1415,7 @@ function drawFisher() {
   const skin = SKIN[stage];
   const amp = frozen ? 0 : cold < 1.2 ? 0 : Math.min(2.4, .6 + (cold - 1.2) * .5);
   const shx = Math.sin(clock * 80) * amp, shy = Math.abs(Math.sin(clock * 61)) * amp * .3;
-  const JACKET = '#2a2f3a', JACKET_D = '#1d212a', ORANGE = '#f08a24';   // skuterdress
+  const av = AVATARS[sel.avatar];
 
   // Skygge på isen
   c.fillStyle = 'rgba(40,80,120,.22)';
@@ -1289,56 +1472,13 @@ function drawFisher() {
   }
 
   // Ben og støvler
-  if (p.sit > .5) {
-    rect(c, -6, -15, 15, 5, JACKET);                    // lår
-    rect(c, 5, -15, 5, 12, '#323845');                  // legg
-    rect(c, 5, -9, 5, 2, '#ffd34d');                    // refleks
-    rect(c, 4, -4, 11, 4, '#15171c'); rect(c, 4, -1, 11, 1.5, '#6b7078');   // kraftig støvel
-  } else {
-    const ls = p.moving ? Math.sin(p.walkT) * 4 : 0;
-    rect(c, -6 + ls, -18, 5, 12, JACKET); rect(c, -6 + ls, -12, 5, 2, '#ffd34d');
-    rect(c, -8 + ls, -6, 9, 6, '#15171c'); rect(c, -8 + ls, -1.5, 9, 1.5, '#6b7078');
-    rect(c, 1 - ls, -18, 5, 12, '#323845'); rect(c, 1 - ls, -12, 5, 2, '#ffd34d');
-    rect(c, -1 - ls, -6, 10, 6, '#1d2026'); rect(c, -1 - ls, -1.5, 10, 1.5, '#6b7078');
-  }
+  avLegs(c, av, p.sit > .5, p.moving ? Math.sin(p.walkT) * 4 : 0);
   c.save(); c.translate(0, dy);                         // overkroppen senkes når man setter seg
 
-  // Bakre arm
-  limb(c, -3, -38, bh.x, bh.y, 6, JACKET_D);
-  limb(c, -3, -38, -3 + (bh.x + 3) * .35, -38 + (bh.y + 38) * .35, 6, '#c26c16');
-  rect(c, bh.x - 2.5, bh.y - 2.5, 5, 5, skin);
-
-  // Kropp, belte, refleks og skjerf
-  rect(c, -9, -40, 18, 24, JACKET);
-  rect(c, -9, -40, 18, 9, ORANGE);                      // oransje overdel
-  rect(c, -9, -29, 18, 2, '#ffd34d');                   // reflekstriper
-  rect(c, -9, -21, 18, 2, '#ffd34d');
-  rect(c, 0, -31, 1.5, 15, '#55606e');                  // glidelås
-  rect(c, 4, -26, 4, 4, '#1d212a');                     // brystlomme
-  rect(c, -8, -43, 16, 4, JACKET); rect(c, -8, -43, 16, 1.5, ORANGE);   // høy krage
-
-  // Hode
-  rect(c, -6, -57, 12, 14, skin);
-  rect(c, 6, -52, 2, 3, skin);                                      // nese
-  if (stage >= 3) rect(c, 6, -50, 2, 3, '#d6f3ff');                 // isdrope på nesen
-  if (frozen) { rect(c, 2, -52, 3, 1, '#102030'); rect(c, 1, -46, 4, 1, '#102030'); }
-  else {
-    rect(c, 2, -52, 2, 2, '#1a1a1a');
-    rect(c, 1, -46, 4, 1, stage >= 2 ? '#1c3f8a' : '#8a4a3a');      // munn (blå lepper når kald)
-  }
-  if (stage === 0) rect(c, -1, -48, 2, 1, 'rgba(255,120,120,.5)');
-  // Pelslue med øreklaffer
-  const FUR = '#7b5333', FUR_L = '#a07848', FUR_D = '#573820';
-  c.fillStyle = FUR; c.beginPath(); c.ellipse(0, -62, 10.5, 8, 0, 0, 6.3); c.fill();
-  rect(c, -10, -61, 20, 6, FUR_L);
-  c.fillStyle = FUR_L;
-  for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(-9 + i * 4.5, -55); c.lineTo(-6.75 + i * 4.5, -53); c.lineTo(-4.5 + i * 4.5, -55); c.closePath(); c.fill(); }
-  rect(c, -9, -58, 9, 15, FUR);                                    // øreklaff
-  c.fillStyle = FUR_L;
-  for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-9 + i * 3, -43); c.lineTo(-7.5 + i * 3, -40); c.lineTo(-6 + i * 3, -43); c.closePath(); c.fill(); }
-  c.fillStyle = FUR_D;
-  [[-6, -66], [2, -68], [6, -64], [-3, -60], [4, -59], [-7, -52], [-4, -47], [-2, -56]].forEach(([fx2, fy2]) => c.fillRect(fx2, fy2, 2, 2));
-  if (stage >= 2) { c.fillStyle = 'rgba(255,255,255,.85)'; [[-5, -67], [3, -66], [-8, -58], [7, -61], [-3, -50]].forEach(([fx2, fy2]) => c.fillRect(fx2, fy2, 1.5, 1.5)); }
+  // Bakre arm, kropp og hode (klær etter valgt avatar)
+  avArm(c, av, -3, bh, true, skin);
+  avTorso(c, av);
+  avHead(c, av, skin, stage, frozen);
 
   // Fiskestang
   if (p.state === 'fish' && !frozen) {
@@ -1352,15 +1492,15 @@ function drawFisher() {
   }
 
   // Fremre arm
-  limb(c, 3, -38, fh.x, fh.y, 6, JACKET);
-  limb(c, 3, -38, 3 + (fh.x - 3) * .35, -38 + (fh.y + 38) * .35, 6, ORANGE);
-  rect(c, fh.x - 2.5, fh.y - 2.5, 5, 5, skin);
+  avArm(c, av, 3, fh, false, skin);
 
   // Kaffekopp
   if (cup) {
-    rect(c, cup.x - 1, cup.y - 4, 7, 8, '#f5f1e8');
-    rect(c, cup.x - 1, cup.y - 4, 7, 2, '#5b3416');
-    c.strokeStyle = '#f5f1e8'; c.lineWidth = 1.5; c.beginPath(); c.arc(cup.x + 7, cup.y, 2.5, -1.5, 1.5); c.stroke();
+    const dk = DRINKS[sel.drink];
+    rect(c, cup.x - 1, cup.y - 4, 7, 8, dk.cup);
+    rect(c, cup.x - 1, cup.y - 4, 7, 2, dk.top);
+    if (sel.drink === 'kakao') { c.fillStyle = '#fff'; c.fillRect(cup.x, cup.y - 5, 2, 1.5); c.fillRect(cup.x + 3, cup.y - 5, 2, 1.5); }   // marshmallows
+    c.strokeStyle = dk.cup; c.lineWidth = 1.5; c.beginPath(); c.arc(cup.x + 7, cup.y, 2.5, -1.5, 1.5); c.stroke();
   }
 
   c.restore();
@@ -1809,7 +1949,7 @@ function getHint() {
   if (game.fight) return 'SVEIV! Trykk SPACE / ↑ gjentatte ganger!';
   if (game.dog.state === 'chase') return 'Hunden jager reven!';
   if (game.fox && (game.fox.state === 'in' || game.fox.state === 'sniff')) return 'REV! Trykk F (eller klikk) for å jage den bort!';
-  if (game.cold >= 3.6 && game.coffee > 0) return 'Du fryser! Trykk K for kaffe';
+  if (game.cold >= 3.6 && game.coffee > 0) return 'Du fryser! Trykk K for ' + dn();
   if (p.drinkTimer > 0) return 'Sluuurp…';
   if (p.state === 'fish') return game.hookDepth <= 3 ? '↓ senk snøret  •  ↑ dra opp  •  ← → gå videre' : '↑ / ↓ dybde  •  SPACE: pilk i rytme for å lokke fisk  •  kjenn etter napp';
   if (p.drill > .001) return 'Borer…';
@@ -2082,7 +2222,10 @@ canvas.addEventListener('mousedown', e => {
 });
 
 
-$('btnStart').addEventListener('click', e => { e.currentTarget.blur(); startGame(); });
+$('btnStart').addEventListener('click', e => { e.currentTarget.blur(); openPick('title'); });
+$('btnGo').addEventListener('click', e => { e.currentTarget.blur(); startGame(); });
+$('btnPickBack').addEventListener('click', e => { e.currentTarget.blur(); closePick(); });
+$('btnPick2').addEventListener('click', e => { e.currentTarget.blur(); openPick('end'); });
 $('btnAgain').addEventListener('click', e => { e.currentTarget.blur(); startGame(); });
 $('btnShop').addEventListener('click', e => { e.currentTarget.blur(); openShop('title'); });
 $('btnShop2').addEventListener('click', e => { e.currentTarget.blur(); openShop('end'); });
@@ -2164,8 +2307,9 @@ function updateDom(dt) {
   dom.hudCold.textContent = 'kulde ' + fmt1(Math.min(game.cold, MAX_COLD)) + ' / 5 t';
   dom.hudTempBar.style.width = (tf * 100) + '%';
   dom.hudTempBar.style.backgroundSize = (100 / Math.max(tf, .05)) + '% 100%';
-  dom.chipCoffee.textContent = '☕ ' + game.coffee + (game.coffee === 1 ? ' kopp' : ' kopper') + ' (K)';
-  dom.chipCoffee.disabled = game.coffee <= 0;
+  const cups = mode === 'title' ? DRINKS[sel.drink].cups + shop.thermos : game.coffee;     // på startskjermen: valgt drikke
+  dom.chipCoffee.textContent = DRINKS[sel.drink].icon + ' ' + cups + (cups === 1 ? ' kopp ' : ' kopper ') + dn() + ' (K)';
+  dom.chipCoffee.disabled = cups <= 0;
   dom.chipCoffee.classList.toggle('hot', mode === 'play' && game.cold >= 3.6 && game.coffee > 0);
 
   const need = levelNeed(game.level), prev = game.level > 1 ? levelNeed(game.level - 1) : 0;
@@ -2228,6 +2372,7 @@ function frame(ts) {
 loadBest();
 loadBoard();
 loadShop();
+loadSel();
 $('nameIn').addEventListener('input', e => {
   lastName = (e.target.value.trim() || 'Spiller').slice(0, 12);
   if (currentEntry) { currentEntry.name = lastName; saveBoard(); refreshBoard(); }

@@ -36,7 +36,7 @@
       <div class="lab">Kroppstemperatur</div>
       <div class="val mono"><span id="hudTemp">37,0 °C</span><span class="coldTxt" id="hudCold">kulde 0,0 / 5 t</span></div>
       <div class="bar"><i id="hudTempBar"></i></div>
-      <button class="chipBtn" id="chipCoffee" title="Drikk kaffe (K)">☕ 3 kopper</button>
+      <button class="chipBtn" id="chipCoffee" title="Drikk kaffe/kakao (K)">☕ 3 kopper</button>
     </div>
     <div class="card">
       <div class="lab">Poeng</div>
@@ -63,11 +63,11 @@
       <b><kbd>SPACE</kbd> i vannet</b><span>Pilk – rykk kroken opp i rytme for å lokke fisk</span>
       <b><kbd>↑</kbd> <kbd>↓</kbd> / <kbd>W</kbd> <kbd>S</kbd></b><span>Styr dybden på kroken</span>
       <b>Trykk <kbd>SPACE</kbd> / <kbd>↑</kbd></b><span>Sveiv inn fisken når det napper</span>
-      <b><kbd>K</kbd> / klikk på kaffe</b><span>Drikk kaffe (varmer opp 3 timer)</span>
+      <b><kbd>K</kbd> / drikke-knappen</b><span>Drikk kaffe eller kakao og varm deg opp</span>
       <b><kbd>F</kbd> / klikk på reven</b><span>Jag bort reven som stjeler fangsten din</span>
       <b><kbd>P</kbd> · <kbd>M</kbd></b><span>Pause · lyd av/på</span>
     </div>
-    <div class="tip">Fiskene er usynlige – finn riktig dybde og pilk i rytme til det napper! Poengene dine spares i en lommebok du kan bruke i butikken på bedre stang, pilk, bor, termos og klær. Nye fiskeslag dukker opp i innsjøen for hvert nytt nivå. Bor så mange hull du vil – hvert hull gir 2–3 fisker. Poeng og sjeldne fisker (som Ørret, Røye og Gjedde) gir nytt nivå, og enda større og sjeldnere fisk dukker opp lenger ut. Runden varer 5 timer i spillet (= 5 minutter i virkeligheten) – flest poeng vinner! Nivåene krever mer og mer poeng, og fiskene blir mer motvillige. Jo kaldere det er ute, jo fortere fryser du. Fra nivå 3 kan det blåse opp til snøstorm (du fryser 25 % raskere). Nivå 4 gir blinkende pilk, nivå 6 karbonstang. Fang 5 ulike arter for Artsjeger-bonus (+250p)! Hunden din sover i hundehuset, men løper ut og jager bort reven når den kommer!</div>
+    <div class="tip">Fiskene er usynlige – finn riktig dybde og pilk i rytme til det napper! Poengene dine spares i en lommebok du kan bruke i butikken på bedre stang, pilk, bor, termos og klær. Nye fiskeslag dukker opp i innsjøen for hvert nytt nivå. Bor så mange hull du vil – hvert hull gir 2–3 fisker. Poeng og sjeldne fisker (som Ørret, Røye og Gjedde) gir nytt nivå, og enda større og sjeldnere fisk dukker opp lenger ut. Runden varer 5 timer i spillet (= 5 minutter i virkeligheten) – flest poeng vinner! Nivåene krever mer og mer poeng, og fiskene blir mer motvillige. Jo kaldere det er ute, jo fortere fryser du. Fra nivå 3 kan det blåse opp til snøstorm (du fryser 25 % raskere). Nivå 4 gir blinkende pilk, nivå 6 karbonstang. Fang 5 ulike arter for Artsjeger-bonus (+250p)! Velg selv fisker og drikke før runden: kaffe gir færre, kraftigere kopper – kakao flere og mildere. Hunden din sover i hundehuset, men løper ut og jager bort reven når den kommer!</div>
     <div class="rec" id="titleRec"></div>
     <div class="btnRow"><button id="btnStart">Start Isfiske</button><button id="btnShop" class="ghost">Butikk</button></div>
     <button id="btnReset" class="link">Nullstill rekord og toppliste</button>
@@ -84,7 +84,17 @@
     <div id="eTable"></div>
     <div class="rec" id="eRec"></div>
     <div class="rec" id="eWallet"></div>
-    <div class="btnRow"><button id="btnAgain">Spill på nytt</button><button id="btnShop2" class="ghost">Butikk</button></div>
+    <div class="btnRow"><button id="btnAgain">Spill på nytt</button><button id="btnPick2" class="ghost">Bytt fisker</button><button id="btnShop2" class="ghost">Butikk</button></div>
+  </div>
+
+  <!-- Velg fisker og drikke -->
+  <div id="ovPick" class="overlay">
+    <h2>Velg fisker</h2>
+    <div class="sub" style="margin:0 0 calc(var(--u)*4)">Klær og drikke</div>
+    <div id="avRow"></div>
+    <div class="sub" style="margin:calc(var(--u)*2) 0 0">Velg drikke i termosen</div>
+    <div id="drinkRow"></div>
+    <div class="btnRow"><button id="btnGo">Start Isfiske</button><button id="btnPickBack" class="ghost">Tilbake</button></div>
   </div>
 
   <!-- Butikk -->
@@ -103,7 +113,7 @@
     <div class="tb" id="tcU" style="right:calc(var(--u)*92);bottom:calc(var(--u)*68)">▲</div>
     <div class="tb" id="tcD" style="right:calc(var(--u)*92);bottom:calc(var(--u)*12)">▼</div>
     <div class="tb lg" id="tcA" style="right:calc(var(--u)*14);bottom:calc(var(--u)*14)">BOR / SVEIV / PILK</div>
-    <div class="tb sm" id="tcK" style="right:calc(var(--u)*14);bottom:calc(var(--u)*92)">KAFFE</div>
+    <div class="tb sm" id="tcK" style="right:calc(var(--u)*14);bottom:calc(var(--u)*92)">DRIKK</div>
     <div class="tb sm" id="tcF" style="right:calc(var(--u)*14);bottom:calc(var(--u)*142)">JAG REV</div>
   </div>
 </div>
@@ -128,7 +138,7 @@
       </div>
       <div class="card">
         <div class="cardHead"><h3>Slik fisker du</h3><span class="tag">KORT FORTALT</span></div>
-        <p class="how"><b>1.</b> Bor hull: hold SPACE. <b>2.</b> Senk snøret: ↓. <b>3.</b> Pilk i rytme med SPACE og se etter napp. <b>4.</b> Når fisken biter: trykk SPACE eller ↑ gjentatte ganger for å sveive inn. <b>K</b> = kaffe, <b>F</b> = jag bort reven.</p>
+        <p class="how"><b>1.</b> Bor hull: hold SPACE. <b>2.</b> Senk snøret: ↓. <b>3.</b> Pilk i rytme med SPACE og se etter napp. <b>4.</b> Når fisken biter: trykk SPACE eller ↑ gjentatte ganger for å sveive inn. <b>K</b> = kaffe/kakao, <b>F</b> = jag bort reven.</p>
       </div>
     </aside>
   </div>
