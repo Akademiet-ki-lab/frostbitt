@@ -66,6 +66,18 @@
   .nameRow input:focus { border-color:#9db9b1; box-shadow:0 0 0 calc(var(--u)*3) rgba(157,185,177,.22); }
   .empty { color:var(--muted); font-size:calc(var(--u)*12); margin:calc(var(--u)*8); }
 
+  /* Valg av avatar og drikke */
+  #avRow, #drinkRow { display:flex; gap:calc(var(--u)*10); justify-content:center; margin:calc(var(--u)*6) 0 calc(var(--u)*10); }
+  button.avCard, button.drinkCard { background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)), var(--card); color:var(--ink);
+    border:1px solid var(--line); border-radius:calc(var(--u)*14); box-shadow:none; font-size:calc(var(--u)*11); font-weight:600; letter-spacing:0; }
+  button.avCard { padding:calc(var(--u)*8) calc(var(--u)*8) calc(var(--u)*9); display:flex; flex-direction:column; align-items:center; gap:calc(var(--u)*4); width:calc(var(--u)*100); }
+  button.avCard canvas { width:calc(var(--u)*68); height:calc(var(--u)*88); }
+  button.drinkCard { width:calc(var(--u)*210); display:flex; flex-direction:column; align-items:flex-start; text-align:left; gap:calc(var(--u)*3); padding:calc(var(--u)*10) calc(var(--u)*14); }
+  button.drinkCard b { font-size:calc(var(--u)*15); }
+  button.drinkCard small { font-family:var(--mono); font-size:calc(var(--u)*10); font-weight:400; color:var(--muted); }
+  button.avCard:hover, button.drinkCard:hover { background:rgba(255,255,255,.08); transform:translateY(calc(var(--u)*-1)); }
+  button.avCard.on, button.drinkCard.on { border-color:#9db9b1; background:rgba(157,185,177,.17); box-shadow:0 0 0 calc(var(--u)*2) rgba(157,185,177,.25); }
+
   /* Butikk */
   .wallet { font-family:var(--mono); font-size:calc(var(--u)*22); font-weight:700; color:var(--gold); margin:calc(var(--u)*2) 0 calc(var(--u)*4); }
   #shopList { display:flex; flex-direction:column; gap:calc(var(--u)*7); width:calc(var(--u)*620); margin-bottom:calc(var(--u)*12); }
