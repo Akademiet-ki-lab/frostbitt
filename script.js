@@ -1997,9 +1997,21 @@ function getHint() {
 }
 
 // Statuskortene ligger nå rundt scenen (se updateDom). Her tegnes bare meldinger og hint i selve scenen.
+// Kompakt statuslinje i selve scenen (fullskjerm/mobil, der kortene rundt er skjult)
+function drawCompactHud() {
+  const left = Math.max(0, ROUND_TIME - game.time);
+  const txtLine = [mmss(left), fmt1(bodyTemp()) + ' °C', Math.floor(game.score) + ' p', 'Nivå ' + game.level, dn() + ' ' + game.coffee].join('   ·   ');
+  ctx.font = '600 13px ' + MONO;
+  const w = ctx.measureText(txtLine).width + 34;
+  rr(W / 2 - w / 2, 8, w, 28, 14); ctx.fillStyle = 'rgba(7,21,28,.85)'; ctx.fill();
+  rr(W / 2 - w / 2 + .5, 8.5, w - 1, 27, 14); ctx.strokeStyle = left < 30 ? 'rgba(255,138,122,.7)' : 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.fillStyle = left < 30 ? '#ff9a8a' : '#eaf3f7'; ctx.fillText(txtLine, W / 2, 27);
+}
+
 function drawHUD() {
+  if (fsActive()) drawCompactHud();
   // ---- Meldinger (små "toast"-piller) ----
-  let y = 40, shown = 0;
+  let y = fsActive() ? 46 : 40, shown = 0;
   ctx.font = '600 12px ' + MONO;
   for (const l of logs) {
     if (shown >= 4) break;
@@ -2237,18 +2249,21 @@ addEventListener('keydown', e => {
   if (mode === 'play' && (k || e.code === 'KeyK')) e.preventDefault();
   if (e.code === 'KeyM' && !e.repeat) toggleMute();
   if (e.code === 'KeyP' && !e.repeat) togglePause();
+  if (e.code === 'KeyG' && !e.repeat) toggleFull();
   if (e.code === 'KeyK' && !e.repeat) tryDrink();
   if (e.code === 'KeyF' && !e.repeat) shoo();
   if (k) { keys[k] = true; if (!e.repeat) onPress(k); }
 });
 addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) keys[k] = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') paused = true; });
+document.addEventListener('pointerdown', () => { if (AC && AC.state === 'suspended') AC.resume(); }, { passive: true });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (mode === 'play') paused = true; });
 
 function toLogical(e) {
   const r = canvas.getBoundingClientRect();
   return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
 }
-canvas.addEventListener('mousedown', e => {
+canvas.addEventListener('pointerdown', e => {
   if (mode !== 'play' || paused) return;
   const m = toLogical(e);
   if (game.fox && Math.abs(m.x - game.fox.x) < 45 && m.y > ICE_TOP - 70 && m.y < ICE_TOP + 10) shoo();
@@ -2272,12 +2287,18 @@ $('btnReset').addEventListener('click', e => {
 // Størrelse og hovedløkke
 // ---------------------------------------------------------------------
 function resize() {
+  applyLayout();
   const wrap = $('stageWrap');
-  const top = wrap.getBoundingClientRect().top + window.scrollY;
-  let cw = wrap.clientWidth;
-  const availH = Math.max(340, innerHeight - top - 10);          // scenen skal passe i høyden uten å scrolle
-  if (cw * H / W > availH) cw = availH * W / H;
-  cw = Math.max(320, Math.floor(cw));
+  let cw;
+  if (fsActive()) {
+    cw = Math.min(innerWidth, innerHeight * W / H);                 // hele skjermen
+  } else {
+    const top = wrap.getBoundingClientRect().top + window.scrollY;
+    cw = wrap.clientWidth;
+    const availH = Math.max(340, innerHeight - top - 10);          // scenen skal passe i høyden uten å scrolle
+    if (innerWidth > 900 && cw * H / W > availH) cw = availH * W / H;
+  }
+  cw = Math.max(240, Math.floor(cw));
   const ch = Math.round(cw * H / W);
   stage.style.width = cw + 'px'; stage.style.height = ch + 'px';
   stage.style.setProperty('--u', (cw / W) + 'px');
@@ -2287,16 +2308,37 @@ function resize() {
   buildBackground();
 }
 addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 200));
 addEventListener('load', () => { resize(); setTimeout(resize, 300); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
 
 // Berøringsknapper (kun på touch-enheter)
 const isTouch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 let touchShown = false;
+
+// Fullskjerm-modus: bare scenen (med kompakt HUD i selve scenen). Slås på med knappen/G, og automatisk på mobil som holdes sideveis.
+let fsMode = false;
+const autoFs = () => isTouch && innerWidth > innerHeight && innerHeight <= 560;
+const fsActive = () => fsMode || autoFs();
+function applyLayout() {
+  document.body.classList.toggle('fs', fsActive());
+  document.body.classList.toggle('touchOn', isTouch);
+}
+function toggleFull() {
+  fsMode = !fsMode;
+  const el = document.documentElement;
+  try {
+    if (fsMode) { const rq = el.requestFullscreen || el.webkitRequestFullscreen; if (rq) { const r = rq.call(el); if (r && r.catch) r.catch(() => {}); } }
+    else if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } catch (e) {}
+  resize();
+}
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && fsMode) fsMode = false; resize(); });
 function bindTouch(id, key, extra) {
   const el = $(id);
   el.addEventListener('pointerdown', e => {
     e.preventDefault(); el.classList.add('on');
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
     if (key) { keys[key] = true; onPress(key); }
     if (extra) extra();
   });
@@ -2355,7 +2397,7 @@ function updateDom(dt) {
   dom.hudTempBar.style.backgroundSize = (100 / Math.max(tf, .05)) + '% 100%';
   const cups = mode === 'title' ? DRINKS[sel.drink].cups + shop.thermos : game.coffee;     // på startskjermen: valgt drikke
   if (lastIcoDrink !== sel.drink) { lastIcoDrink = sel.drink; dom.chipIco.textContent = ''; dom.chipIco.appendChild(thermosSvg(sel.drink, 9)); }
-  dom.chipTxt.textContent = 'Termos: ' + cups + (cups === 1 ? ' slurk ' : ' slurker ') + dn() + ' (K)';
+  dom.chipTxt.textContent = cups + (cups === 1 ? ' slurk ' : ' slurker ') + dn() + ' (K)';
   dom.chipCoffee.disabled = cups <= 0;
   dom.chipCoffee.classList.toggle('hot', mode === 'play' && game.cold >= 3.6 && game.coffee > 0);
 
@@ -2399,10 +2441,12 @@ function updateDom(dt) {
   dom.chipWallet.textContent = walletText();
   dom.btnPause.textContent = paused ? 'FORTSETT' : 'PAUSE';
   dom.btnMute.textContent = muted ? 'LYD AV' : 'LYD PÅ';
+  $('btnFull').textContent = fsActive() ? 'AVSLUTT' : 'FULLSKJERM';
 }
 dom.chipCoffee.addEventListener('click', e => { e.currentTarget.blur(); tryDrink(); });
 dom.btnPause.addEventListener('click', e => { e.currentTarget.blur(); togglePause(); });
 dom.btnMute.addEventListener('click', e => { e.currentTarget.blur(); toggleMute(); });
+$('btnFull').addEventListener('click', e => { e.currentTarget.blur(); toggleFull(); });
 
 let last = 0;
 function frame(ts) {

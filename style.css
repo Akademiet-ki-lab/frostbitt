@@ -89,17 +89,6 @@
   button.buy { font-family:var(--mono); font-size:calc(var(--u)*12); padding:calc(var(--u)*6) calc(var(--u)*16); white-space:nowrap; }
   .maxed { font-family:var(--mono); font-weight:700; font-size:calc(var(--u)*11); color:#7be0c3; letter-spacing:.15em; }
 
-  /* Berøringsknapper (vises kun på touch-enheter under spilling) */
-  #touch { position:absolute; inset:0; display:none; pointer-events:none; }
-  #touch.show { display:block; }
-  #touch .tb { position:absolute; pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
-    display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; color:var(--ink); font-size:calc(var(--u)*20);
-    width:calc(var(--u)*50); height:calc(var(--u)*50); border-radius:calc(var(--u)*14); background:rgba(10,28,36,.72);
-    border:1px solid rgba(255,255,255,.22); box-shadow:0 calc(var(--u)*6) calc(var(--u)*16) rgba(0,0,0,.35); }
-  #touch .tb.on { background:rgba(157,185,177,.65); color:#0a1d24; transform:scale(.94); }
-  #touch .tb.sm { width:calc(var(--u)*42); height:calc(var(--u)*42); font-size:calc(var(--u)*9); }
-  #touch .tb.lg { width:calc(var(--u)*68); height:calc(var(--u)*68); font-size:calc(var(--u)*10); }
-
   /* ====================== Sidelayout (mørkt dashbord) ====================== */
   :root { --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace; --bg:#07151c; --card:#0d212b; --line:rgba(255,255,255,.08);
     --muted:#7f98a5; --ink:#e8f1f5; --gold:#f2c14e; }
@@ -176,3 +165,67 @@
   button.chipBtn { display:inline-flex; align-items:center; gap:7px; }
   button.chipBtn #chipIco { display:inline-flex; }
   button.drinkCard b { display:flex; align-items:center; }
+
+  /* ====================== Mobil, nettbrett og fullskjerm ====================== */
+  html { touch-action:manipulation; overscroll-behavior:none; -webkit-text-size-adjust:100%; }
+  .rotateTip { display:none; font-family:var(--mono); font-size:10px; color:var(--muted); margin:0 2px 8px; }
+  @media (pointer:coarse) and (orientation:portrait) { .rotateTip { display:block; } }
+
+  /* Berøringsknapper: egen, fast plassering i ekte piksler (uavhengig av scenestørrelsen) */
+  #touch { position:fixed; left:0; right:0; bottom:0; height:230px; display:none; pointer-events:none; z-index:80;
+    padding-bottom:env(safe-area-inset-bottom); }
+  #touch.show { display:block; }
+  #touch .tb { position:absolute; pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+    display:flex; align-items:center; justify-content:center; text-align:center; font-family:var(--mono); font-weight:700; color:var(--ink);
+    font-size:22px; width:62px; height:62px; border-radius:16px; background:rgba(10,28,36,.78);
+    border:1px solid rgba(255,255,255,.24); box-shadow:0 6px 16px rgba(0,0,0,.4); }
+  #touch .tb.on { background:rgba(157,185,177,.75); color:#0a1d24; transform:scale(.95); }
+  #touch .tb.sm { width:72px; height:44px; font-size:11px; border-radius:12px; }
+  #touch .tb.lg { width:92px; height:92px; font-size:12px; border-radius:22px; line-height:1.3; }
+  #tcL { left:12px; bottom:22px; }  #tcR { left:84px; bottom:22px; }
+  #tcA { right:12px; bottom:22px; } #tcD { right:114px; bottom:22px; }  #tcU { right:114px; bottom:92px; }
+  #tcK { right:12px; bottom:122px; } #tcF { right:12px; bottom:172px; }
+  body.touchOn #app { padding-bottom:250px; }
+
+  /* Fullskjerm (knapp / G) og mobil sideveis: bare scenen */
+  body.fs { overflow:hidden; }
+  body.fs #app { max-width:none; padding:0; }
+  body.fs .stats, body.fs .side, body.fs .rotateTip, body.fs .brand, body.fs #chipWallet { display:none; }
+  body.fs .top { position:fixed; top:6px; right:8px; z-index:70; margin:0; }
+  body.fs .main { display:block; }
+  body.fs #stageWrap { height:100vh; height:100dvh; display:flex; align-items:center; justify-content:center; }
+  body.fs #stage { border-radius:0; box-shadow:none; }
+  body.fs.touchOn #app { padding-bottom:0; }
+  body.fs .sceneLabel.right { top:40px; }
+
+  /* Små skjermer (mobil/nettbrett): kompakte kort, og skjermbildene fyller hele skjermen */
+  @media (max-width: 900px) {
+    #app { padding:6px 8px 12px; }
+    .main { grid-template-columns:minmax(0,1fr); }
+    .stats { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-bottom:6px; }
+    .card { padding:6px 9px; border-radius:12px; }
+    .lab { font-size:8px; letter-spacing:.08em; }
+    .big { font-size:17px; margin-top:0; }
+    .big small, .subm, .coldTxt { display:none; }
+    .val { font-size:13px; margin-top:1px; }
+    button.chipBtn { font-size:8px; padding:2px 6px; margin-top:3px; gap:4px; }
+    .chipLab { display:none; }
+    .brandSub, #chipWallet { display:none; }
+    .topRight { flex-wrap:wrap; justify-content:flex-end; gap:4px; }
+
+    .overlay { position:fixed; inset:0; z-index:90; --u:1px; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box;
+      justify-content:flex-start; padding:18px 12px calc(30px + env(safe-area-inset-bottom)); }
+    .overlay.show::before { content:''; margin-top:auto; }
+    .overlay.show::after { content:''; margin-bottom:auto; flex:0 0 12px; }
+    h1 { font-size:clamp(34px,11vw,64px); }
+    h2 { font-size:clamp(26px,8vw,38px); }
+    .ctrl { max-width:100%; font-size:12px; }
+    .tip { max-width:100%; }
+    #shopList { width:min(620px,100%); }
+    #avRow, #drinkRow { flex-wrap:wrap; }
+    button.drinkCard { width:min(210px,44vw); }
+    button { padding:12px 26px; }
+    .btnRow { flex-wrap:wrap; }
+    .nameRow input { font-size:16px; width:170px; }
+    .sceneLabel { font-size:8px; top:6px; }
+  }
