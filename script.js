@@ -232,6 +232,10 @@ const AVATARS = {
     jacket: '#4d6b3a', jacketD: '#3a5229', armUp: '#4d6b3a', armUpD: '#3a5229', accent: '#2e3f20',
     legs: '#6b6340', legs2: '#756c46', legBand: null, boot: '#4a3020', boot2: '#3b2618', sole: '#2a1a10',
     hatA: '#4d6b3a', hatB: '#e9e4da', hatC: '#3a5229' },
+  marius: { name: 'Mariusgenser', pattern: 'marius', hat: 'topplue', hatPat: 'marius',
+    jacket: '#1a2b5e', jacketD: '#111d41', armUp: '#e9e4d6', armUpD: '#c9c3b2', accent: '#e9e4d6',
+    legs: '#26324f', legs2: '#2e3b5c', legBand: null, boot: '#3a2a1e', boot2: '#2f2218', sole: '#a89f8c',
+    hatA: '#1a2b5e', hatB: '#e9e4d6', hatC: '#c0392b' },
   puffer: { name: 'Gul pufferjakke', pattern: 'puffer', hat: 'beanie',
     jacket: '#f2c230', jacketD: '#c99a18', armUp: '#f2c230', armUpD: '#c99a18', accent: '#c99a18',
     legs: '#23366b', legs2: '#2b4180', legBand: null, boot: '#e8e8ec', boot2: '#d6d6dc', sole: '#8a8f98',
@@ -1348,6 +1352,20 @@ function avTorso(c, av) {
     rect(c, -8, -26, 6, 7, av.jacketD); rect(c, 2, -26, 6, 7, av.jacketD);   // lommer
     rect(c, -9, -18, 18, 2, av.jacketD);
     rect(c, -8, -43, 16, 4, av.jacketD);
+  } else if (av.pattern === 'marius') {                   // klassisk Marius-mønster: hvite/røde bånd og stjerner på marineblå bunn
+    const W2 = '#e9e4d6', R2 = '#c0392b';
+    rect(c, -9, -40, 18, 2, R2); rect(c, -9, -38, 18, 1.5, W2);
+    rect(c, -9, -36.5, 18, 6, W2);
+    for (let x = -5; x <= 5; x += 5) {                    // stjerner
+      rect(c, x - 2, -34, 4, 1.2, R2); rect(c, x - .6, -36, 1.2, 5, R2);
+      rect(c, x - 1.6, -35.6, 1.2, 1.2, av.jacket); rect(c, x + .4, -35.6, 1.2, 1.2, av.jacket);
+      rect(c, x - 1.6, -32.8, 1.2, 1.2, av.jacket); rect(c, x + .4, -32.8, 1.2, 1.2, av.jacket);
+    }
+    rect(c, -9, -30.5, 18, 1.5, W2); rect(c, -9, -29, 18, 2, R2);
+    c.fillStyle = W2;                                     // småmønster nedover
+    for (let y = -24; y < -17; y += 5) for (let x = -7 + ((y / 5) & 1) * 2; x < 9; x += 4) c.fillRect(x, y, 1.5, 1.5);
+    rect(c, -9, -18, 18, 1.5, W2); rect(c, -9, -16.5, 18, 1.5, R2);
+    rect(c, -8, -43, 16, 4, av.jacket); rect(c, -8, -42, 16, 1, W2); rect(c, -8, -40.7, 16, 1, R2);   // krage
   } else {                                                // puffer
     c.fillStyle = av.accent;
     for (let y = -36; y < -16; y += 5) c.fillRect(-9, y, 18, 1);
@@ -1383,7 +1401,8 @@ function avHead(c, av, skin, stage, frozen) {
     rect(c, -8, -58, 7, 13, av.hatA);                               // dekker øret
     rect(c, -10, -60, 20, 5, av.hatB);                              // brett
     c.fillStyle = av.hatC;
-    if (av.hat === 'topplue') for (let i = 0; i < 6; i++) { c.fillRect(-9 + i * 3.4, -59, 1.6, 1.6); c.fillRect(-7.3 + i * 3.4, -57, 1.6, 1.6); }
+    if (av.hatPat === 'marius') { rect(c, -10, -59.8, 20, 1.2, av.hatC); rect(c, -10, -55.6, 20, 1.2, av.hatC); for (let i = 0; i < 5; i++) { c.fillRect(-8 + i * 4, -57.6, 3, 1); c.fillRect(-6.9 + i * 4, -58.6, 1, 3); } }
+    else if (av.hat === 'topplue') for (let i = 0; i < 6; i++) { c.fillRect(-9 + i * 3.4, -59, 1.6, 1.6); c.fillRect(-7.3 + i * 3.4, -57, 1.6, 1.6); }
     else for (let i = 0; i < 7; i++) c.fillRect(-9 + i * 3, -60, 1, 5);
     c.fillStyle = av.hat === 'topplue' ? av.hatC : av.hatB;
     c.beginPath(); c.arc(0, -70 - tall * .4, 4, 0, 6.3); c.fill();   // dusk
