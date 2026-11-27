@@ -3,17 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#050b16">
+<meta name="theme-color" content="#07151c">
 <title>FROSTBITT – Isfiske</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="app">
+
+  <!-- Topplinje -->
+  <header class="top">
+    <div class="brand">
+      <div class="logo">❄</div>
+      <div><div class="brandName">FROSTBITT</div><div class="brandSub">Isfiske · Innsjøen</div></div>
+    </div>
+    <div class="topRight">
+      <span class="chip" id="chipWallet">Lommebok 0 p</span>
+      <button class="iconBtn" id="btnPause" title="Pause (P)">PAUSE</button>
+      <button class="iconBtn" id="btnMute" title="Lyd av/på (M)">LYD PÅ</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="leftCol">
+  <!-- Statuskort -->
+  <section class="stats">
+    <div class="card">
+      <div class="lab">Tid igjen</div>
+      <div class="big mono" id="hudTime">05:00</div>
+      <div class="subm" id="hudTimeSub">Fisket 0,0 t · Igjen 5,0 t</div>
+    </div>
+    <div class="card">
+      <div class="lab">Kroppstemperatur</div>
+      <div class="val mono"><span id="hudTemp">37,0 °C</span><span class="coldTxt" id="hudCold">kulde 0,0 / 5 t</span></div>
+      <div class="bar"><i id="hudTempBar"></i></div>
+      <button class="chipBtn" id="chipCoffee" title="Drikk kaffe (K)">☕ 3 kopper</button>
+    </div>
+    <div class="card">
+      <div class="lab">Poeng</div>
+      <div class="big"><span id="hudScore">0</span> <small>pts</small></div>
+      <div class="subm" id="hudLevel">Nivå 1 · 0 / 60</div>
+      <div class="bar"><i id="hudLevelBar" class="lvl"></i></div>
+    </div>
+  </section>
+
+    <div id="stageWrap">
 <div id="stage">
   <canvas id="game" width="960" height="600"></canvas>
+  <div class="sceneLabel left" id="sceneL">INNSJØEN · VINTER</div>
+  <div class="sceneLabel right" id="sceneR">-8 °C · NORDAVIND</div>
 
   <!-- Startskjerm -->
-  <div id="ovTitle" class="overlay withlb show">
-    <div class="lb" id="lbTitle"></div>
+  <div id="ovTitle" class="overlay show">
     <h1>FROSTBITT</h1>
     <div class="sub">Et norsk isfiskeeventyr</div>
     <div class="ctrl">
@@ -34,8 +74,7 @@
   </div>
 
   <!-- Sluttskjerm -->
-  <div id="ovEnd" class="overlay withlb">
-    <div class="lb" id="lbEnd"></div>
+  <div id="ovEnd" class="overlay">
     <h2 id="eTitle">Tiden er ute!</h2>
     <div class="score">Poengsum: <span id="eScore">0</span></div>
     <div class="sub" id="eLevel"></div>
@@ -66,6 +105,32 @@
     <div class="tb lg" id="tcA" style="right:calc(var(--u)*14);bottom:calc(var(--u)*14)">BOR / SVEIV / PILK</div>
     <div class="tb sm" id="tcK" style="right:calc(var(--u)*14);bottom:calc(var(--u)*110)">KAFFE</div>
     <div class="tb sm" id="tcF" style="right:calc(var(--u)*14);bottom:calc(var(--u)*172)">JAG REV</div>
+  </div>
+</div>
+    </div>
+    </div>
+
+    <!-- Sidekort -->
+    <aside class="side">
+      <div class="card">
+        <div class="cardHead"><h3>Akkurat nå</h3><span class="tag" id="nowTag">KLAR</span></div>
+        <p id="nowText" class="nowText">Trykk «Start Isfiske» for å begynne.</p>
+        <div class="bar"><i id="nowBar"></i></div>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Dagens fangst</h3><span class="tag" id="catchCount">0 FISK</span></div>
+        <div id="catchChips" class="chips"><span class="note">Ingen fangst ennå – bor et hull og pilk!</span></div>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Toppliste</h3><span class="tag">PÅ DENNE ENHETEN</span></div>
+        <div id="lbSide" class="board"></div>
+        <p class="note">Poengsummene lagres lokalt i nettleseren. Global toppliste krever en server.</p>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Slik fisker du</h3><span class="tag">KORT FORTALT</span></div>
+        <p class="how"><b>1.</b> Bor hull: hold SPACE. <b>2.</b> Senk snøret: ↓. <b>3.</b> Pilk i rytme med SPACE og se etter napp. <b>4.</b> Når fisken biter: trykk SPACE eller ↑ gjentatte ganger for å sveive inn. <b>K</b> = kaffe, <b>F</b> = jag bort reven.</p>
+      </div>
+    </aside>
   </div>
 </div>
 

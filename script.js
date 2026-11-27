@@ -249,7 +249,7 @@ function resetGame() {
     time: 0, cold: 0, coffee: 3 + shop.thermos, coffeeMax: 3 + shop.thermos, rodCrank: [1, 1.15, 1.3, 1.45][shop.rod], rodBite: [1, 1, 1.1, 1.2][shop.rod], jigE: 0, jigOff: 0, lastJig: -9, score: 0, caught: {}, totalCaught: 0,
     fight: null, hookDepth: 0, hookVisY: ICE_BOT, napp: 0, flash: 0,
     noExitUntil: 0, spawnT: 2, freezeT: 0, lastStage: 0, hintFlash: 0,
-    storm: 0, stormT: rnd(15, 30), stormI: 0, stormAlert: 0, hintMsg: '', hintMsgT: 0, seen: {}, speciesBonus: 0, shake: 0, endReason: '', dog: { x: KENNEL_X, dir: 1, state: 'idle', t: 0, runT: 0, moving: false }, pile: [], pileX: W / 2 - 70, fox: null, foxT: rnd(25, 35), stolen: 0, level: 1, banner: 0, bannerText: '', nibble: 0
+    catchLog: [], catchVer: 0, wind: 'NORDAVIND', storm: 0, stormT: rnd(15, 30), stormI: 0, stormAlert: 0, hintMsg: '', hintMsgT: 0, seen: {}, speciesBonus: 0, shake: 0, endReason: '', dog: { x: KENNEL_X, dir: 1, state: 'idle', t: 0, runT: 0, moving: false }, pile: [], pileX: W / 2 - 70, fox: null, foxT: rnd(25, 35), stolen: 0, level: 1, banner: 0, bannerText: '', nibble: 0
   });
   FISH_KEYS.forEach(k => game.caught[k] = 0);
   windStop();
@@ -484,6 +484,7 @@ function catchFish() {
     if (ns === 5) log('Artsjeger! 5 arter fanget – bonus +250p ved rundens slutt.', '#ffd86b');
     else if (ns < 5) log('Ny art: ' + T.name + ' (' + ns + '/5 arter)', '#cfe9f8');
   }
+  game.catchLog.push({ key: f.key, pts: T.pts, stolen: false }); game.catchVer++;
   game.pile.push(f.key);                         // fangsten havner i haugen ved siden av fiskeren
   const isBoot = f.key === 'stovel';
   if (isBoot) {
@@ -594,20 +595,20 @@ function addToBoard(entry) {
 }
 function renderBoard(el, mine) {
   el.textContent = '';
-  const h = document.createElement('div'); h.className = 'lbh'; h.textContent = 'TOPPLISTE'; el.appendChild(h);
   if (!board.length) {
     const n = document.createElement('div'); n.className = 'none'; n.textContent = 'Ingen resultater ennå'; el.appendChild(n);
     return;
   }
   board.forEach((e, i) => {
     const r = document.createElement('div'); r.className = 'lbr' + (e === mine ? ' me' : '');
-    [['rk', (i + 1) + '.'], ['nm', e.name], ['sc', String(e.score)]].forEach(([c, t]) => {
+    [['rk', String(i + 1).padStart(2, '0')], ['nm', e.name], ['fs', e.fish + ' fisk'], ['sc', String(e.score)]].forEach(([c, t]) => {
       const sp = document.createElement('span'); sp.className = c; sp.textContent = t; r.appendChild(sp);
     });
-    r.title = 'Nivå ' + e.level + ' · ' + e.fish + ' fisk';
+    r.title = 'Nivå ' + e.level;
     el.appendChild(r);
   });
 }
+const refreshBoard = () => renderBoard($('lbSide'), currentEntry);
 
 function endGame() {
   mode = 'over';
@@ -622,7 +623,7 @@ function endGame() {
   currentEntry = game.score > 0 ? addToBoard({ name: lastName, score: game.score, level: game.level, fish: game.totalCaught }) : null;
   $('nameIn').value = lastName;
   $('nameIn').parentNode.style.display = currentEntry ? '' : 'none';
-  renderBoard($('lbEnd'), currentEntry);
+  refreshBoard();
   $('eScore').textContent = game.score;
   $('eLevel').textContent = 'Du nådde nivå ' + game.level;
   $('eNew').textContent = isNew ? '★ NY REKORD! ★' : '';
@@ -699,7 +700,7 @@ function closeShop() {
 }
 
 function showTitle() {
-  renderBoard($('lbTitle'), null);
+  refreshBoard();
   $('titleRec').textContent = (best.score > 0 ? 'Personlig rekord: ' + best.score + ' poeng  ·  ' : '') + walletText();
 }
 
@@ -798,6 +799,7 @@ function updateFox(dt) {
       const i = idx[(Math.random() * idx.length) | 0], key = game.pile.splice(i, 1)[0], T = FISH[key];
       game.score = Math.max(0, game.score - T.pts);
       game.caught[key]--; game.totalCaught--; game.stolen++;
+      for (let j = game.catchLog.length - 1; j >= 0; j--) if (game.catchLog[j].key === key && !game.catchLog[j].stolen) { game.catchLog[j].stolen = true; game.catchVer++; break; }
       f.loot = key; f.state = 'out'; f.dir = f.x < W / 2 ? -1 : 1;
       log('Reven stjal ' + T.acc + '! −' + T.pts + 'p', '#ff6a5a');
       popup({ x: game.pileX, y: ICE_TOP - 70, key: null, text: '−' + T.pts + 'p', life: 1.4 });
@@ -1568,13 +1570,13 @@ function drawStormHaze() {
 // Lite varsel og nedtelling under snøstorm
 function drawStormUI() {
   if (game.storm <= 0) return;
-  panel(684, 130, 200, 24, 12, 'rgba(191,227,255,.7)', 'rgba(40,70,110,.7)');
-  const cx = 700, cy = 142;
+  panel(W - 222, 40, 206, 26, 13, 'rgba(191,227,255,.7)', 'rgba(20,50,80,.85)');
+  const cx = W - 206, cy = 53;
   ctx.strokeStyle = '#dff1ff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
   ctx.beginPath();
   for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.moveTo(cx - Math.cos(a) * 6, cy - Math.sin(a) * 6); ctx.lineTo(cx + Math.cos(a) * 6, cy + Math.sin(a) * 6); }
   ctx.stroke();
-  txt('SNØSTORM  ' + Math.ceil(game.storm) + ' s  ·  +25 % kulde', 712, 146, 11, '#dff1ff', 'left', null);
+  txt('SNØSTORM  ' + Math.ceil(game.storm) + ' s  ·  +25 % kulde', W - 194, 57, 11, '#dff1ff', 'left', null);
   if (game.stormAlert > 0) {
     ctx.globalAlpha = clamp(game.stormAlert, 0, 1);
     ctx.save(); ctx.shadowColor = 'rgba(160,210,255,.9)'; ctx.shadowBlur = 18;
@@ -1820,113 +1822,34 @@ function getHint() {
   return 'Hold SPACE for å bore et hull (så mange du vil)';
 }
 
+// Statuskortene ligger nå rundt scenen (se updateDom). Her tegnes bare meldinger og hint i selve scenen.
+const MONO = 'ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace';
 function drawHUD() {
-  const stage = skinStage(game.cold);
-
-  // ---- Poeng og nivå ----
-  panel(12, 10, 190, 62, 14);
-  lbl('POENG', 26, 28);
-  ctx.fillStyle = 'rgba(125,255,155,.18)'; rr(134, 16, 56, 18, 9); ctx.fill();
-  txt('NIVÅ ' + game.level, 162, 29, 11, '#8dffb0', 'center', null);
-  txt(String(Math.floor(game.score)), 26, 56, 26, '#ffe08a', 'left', null);
-  const need = levelNeed(game.level), prev = game.level > 1 ? levelNeed(game.level - 1) : 0;
-  const pf = clamp((game.score - prev) / (need - prev), 0, 1);
-  ctx.fillStyle = 'rgba(255,255,255,.14)'; rr(26, 62, 164, 4, 2); ctx.fill();
-  if (pf > 0) { ctx.fillStyle = '#8dffb0'; rr(26, 62, Math.max(4, 164 * pf), 4, 2); ctx.fill(); }
-  txt('→ ' + need + 'p', 190, 56, 11, 'rgba(190,225,250,.85)', 'right', null);
-
-  // ---- Kuldemåler med klokke ----
-  panel(212, 10, 465, 62, 14, stage >= 2 ? 'rgba(143,211,255,.6)' : null);
-  const cx = 242, cy = 41;
-  let g = ctx.createRadialGradient(cx - 4, cy - 4, 2, cx, cy, 17);
-  g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#cfe0ee');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, 16, 0, 6.3); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.stroke();
-  for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283 - 1.5708; ctx.fillStyle = '#1b3b5c'; ctx.fillRect(cx + Math.cos(a) * 12 - 1, cy + Math.sin(a) * 12 - 1, 2, 2); }
-  const ha = game.cold / MAX_COLD * 6.283 - 1.5708;
-  ctx.strokeStyle = stage >= 2 ? '#2f80ff' : '#d03a2a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ha) * 11, cy + Math.sin(ha) * 11); ctx.stroke();
-
-  const bx = 272, bw = 388, by = 32, bh = 14;
-  lbl('KULDEMÅLER', bx, 26);
-  txt(fmt1(Math.min(game.cold, MAX_COLD)) + ' / 5 timer', bx + bw, 27, 12, '#ffffff', 'right', null);
-  ctx.save();
-  rr(bx, by, bw, bh, 7); ctx.clip();
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(bx, by, bw, bh);
-  g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-  g.addColorStop(0, '#ffb347'); g.addColorStop(.35, '#ffe9a8'); g.addColorStop(.6, '#8fd3ff'); g.addColorStop(1, '#2f80ff');
-  ctx.fillStyle = g; ctx.fillRect(bx, by, bw * clamp(game.cold / MAX_COLD, 0, 1), bh);
-  ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(bx, by, bw, bh / 2);
-  ctx.restore();
-  for (let i = 1; i < 5; i++) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(bx + bw * i / 5 - .5, by + 2, 1, bh - 4); }
-  for (let i = 0; i <= 5; i++) txt(String(i), bx + bw * i / 5, 63, 10, 'rgba(190,225,250,.75)', 'center', null);
-
-  // ---- Kaffe ----
-  const hot = game.cold >= 3.6 && game.coffee > 0 && Math.floor(clock * 3) % 2 === 0;
-  panel(687, 10, 261, 62, 14, hot ? '#ffb347' : null, hot ? 'rgba(120,60,10,.7)' : null);
-  lbl('KAFFE', 701, 28);
-  ctx.fillStyle = 'rgba(255,255,255,.9)'; rr(701, 40, 24, 20, 6); ctx.fill();
-  txt('K', 713, 55, 13, '#0f2a47', 'center', null);
-  const nc = game.coffeeMax, sp = nc <= 3 ? 58 : nc === 4 ? 48 : 40, x0 = 903 - (nc - 1) * sp;
-  for (let i = 0; i < nc; i++) cupIcon(x0 + i * sp, 28, i < game.coffee);
-
-  // ---- Tid igjen, timer fisket/igjen (spilltid) og temperatur ute ----
-  const left = Math.max(0, ROUND_TIME - game.time);
-  const remain = Math.ceil(left), mm = Math.floor(remain / 60), ss = remain % 60;   // nedtelling fra 5:00
-  const lowT = left < 30 && Math.floor(clock * 3) % 2 === 0;
-  panel(547, 78, 337, 46, 14, lowT ? '#ff6a5a' : null, lowT ? 'rgba(120,20,20,.7)' : null);
-  lbl('TID IGJEN', 563, 95);
-  txt(mm + ':' + (ss < 10 ? '0' : '') + ss, 563, 117, 22, lowT ? '#ffb0a5' : '#ffffff', 'left', null);
-  txt('Fisket  ' + fmt1(Math.min(5, game.time / GAME_HOUR)) + ' t', 662, 100, 12, 'rgba(210,235,250,.9)', 'left', null);
-  txt('Igjen  ' + fmt1(left / GAME_HOUR) + ' t', 662, 117, 12, '#ffe08a', 'left', null);
-  lbl('UTE', 868, 95, null, 'right');
-  txt(Math.round(outsideTemp()) + '°C', 868, 117, 20, '#8fd3ff', 'right', null);
-
-  // ---- Kroppstemperatur (termometer) ----
-  const temp = bodyTemp(), tf = (temp - TEMP_DEAD) / (TEMP_NORMAL - TEMP_DEAD);
-  panel(892, 84, 56, 152, 14, stage >= 2 ? 'rgba(143,211,255,.6)' : null);
-  lbl('KROPP', 920, 100, null, 'center');
-  const tx = 934, ty0 = 108, ty1 = 188;
-  ctx.fillStyle = 'rgba(0,0,0,.4)'; rr(tx - 4, ty0, 8, ty1 - ty0 + 6, 4); ctx.fill();
-  g = ctx.createLinearGradient(0, ty1, 0, ty0);
-  g.addColorStop(0, '#2f80ff'); g.addColorStop(.5, '#8fd3ff'); g.addColorStop(1, '#ffb347');
-  ctx.fillStyle = BAR_COL[stage];
-  rr(tx - 2.5, ty1 - (ty1 - ty0) * tf, 5, (ty1 - ty0) * tf + 6, 2.5); ctx.fill();
-  ctx.beginPath(); ctx.arc(tx, 196, 9, 0, 6.3); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(tx - 3, 193, 2.5, 0, 6.3); ctx.fill();
-  for (let i = 0; i < 4; i++) {
-    const yy = ty1 - (ty1 - ty0) * i / 3;
-    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(tx - 9, yy - .5, 4, 1);
-    txt(String(Math.round(TEMP_DEAD + (TEMP_NORMAL - TEMP_DEAD) * i / 3)), tx - 12, yy + 3, 9, 'rgba(190,225,250,.75)', 'right', null);
-  }
-  txt(fmt1(temp) + '°C', 920, 227, 12, stage >= 2 ? '#8fd3ff' : '#ffffff', 'center', null);
-
-  // ---- Logg (små "toast"-meldinger) ----
-  let y = 82, shown = 0;
-  ctx.font = 'bold 13px ' + FONT;
+  // ---- Meldinger (små "toast"-piller) ----
+  let y = 40, shown = 0;
+  ctx.font = '600 12px ' + MONO;
   for (const l of logs) {
     if (shown >= 4) break;
     const a = clamp((11 - l.t) / 3, 0, 1);
     if (a <= 0) continue;
     const slide = (1 - Math.min(1, l.t * 6)) * -26;
-    const tw = ctx.measureText(l.text).width + 30;
+    const tw = ctx.measureText(l.text).width + 32;
     ctx.globalAlpha = a;
-    rr(14 + slide, y, tw, 24, 12); ctx.fillStyle = 'rgba(10,26,54,.7)'; ctx.fill();
-    rr(14.5 + slide, y + .5, tw - 1, 23, 12); ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = l.col; ctx.beginPath(); ctx.arc(26 + slide, y + 12, 3.5, 0, 6.3); ctx.fill();
-    txt(l.text, 37 + slide, y + 16.5, 13, '#ffffff', 'left', null);
+    rr(16 + slide, y, tw, 26, 13); ctx.fillStyle = 'rgba(8,24,32,.78)'; ctx.fill();
+    rr(16.5 + slide, y + .5, tw - 1, 25, 13); ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = l.col; ctx.beginPath(); ctx.arc(30 + slide, y + 13, 3.5, 0, 6.3); ctx.fill();
+    ctx.font = '600 12px ' + MONO; ctx.textAlign = 'left'; ctx.fillStyle = '#e8f1f5'; ctx.fillText(l.text, 42 + slide, y + 17.5);
     ctx.globalAlpha = 1;
-    y += 28; shown++;
+    y += 31; shown++;
   }
 
-  // ---- Hint nederst ----
+  // ---- Hint nederst (som i skjermbildet: mørk pille med monospace) ----
   const hint = getHint();
-  ctx.font = '600 14px ' + FONT;
+  ctx.font = '600 13px ' + MONO;
   const hw = ctx.measureText(hint).width + 36;
-  panel(W / 2 - hw / 2, 560, hw, 30, 15, null, 'rgba(8,22,46,.62)');
-  txt(hint, W / 2, 580, 14, '#ffffff', 'center', null);
-
-  txt('M lyd ' + (muted ? 'av' : 'på') + '  ·  P pause', W - 12, 595, 10, 'rgba(255,255,255,.55)', 'right', null);
+  rr(W / 2 - hw / 2, 556, hw, 32, 10); ctx.fillStyle = 'rgba(7,21,28,.86)'; ctx.fill();
+  rr(W / 2 - hw / 2 + .5, 556.5, hw - 1, 31, 10); ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.fillStyle = '#eaf3f7'; ctx.fillText(hint, W / 2, 576);
 }
 
 // Fremdriftsmåler for isboret
@@ -2114,6 +2037,9 @@ function render() {
 const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
   ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'space' };
 
+function toggleMute() { muted = !muted; if (!muted) sfx.click(); else windSet(0); }
+function togglePause() { if (mode === 'play') paused = !paused; }
+
 function onPress(k) {
   if (mode !== 'play' || paused) return;
   if (k === 'space' || k === 'up') {
@@ -2127,8 +2053,8 @@ addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;   // ikke fang tastetrykk mens man skriver navn
   const k = KEYMAP[e.code];
   if (mode === 'play' && (k || e.code === 'KeyK')) e.preventDefault();
-  if (e.code === 'KeyM') { muted = !muted; if (!muted) sfx.click(); }
-  if (e.code === 'KeyP' && mode === 'play' && !e.repeat) paused = !paused;
+  if (e.code === 'KeyM' && !e.repeat) toggleMute();
+  if (e.code === 'KeyP' && !e.repeat) togglePause();
   if (e.code === 'KeyK' && !e.repeat) tryDrink();
   if (e.code === 'KeyF' && !e.repeat) shoo();
   if (k) { keys[k] = true; if (!e.repeat) onPress(k); }
@@ -2140,14 +2066,12 @@ function toLogical(e) {
   const r = canvas.getBoundingClientRect();
   return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
 }
-const overCoffee = m => m.x >= 687 && m.x <= 948 && m.y >= 10 && m.y <= 72;
 canvas.addEventListener('mousedown', e => {
   if (mode !== 'play' || paused) return;
   const m = toLogical(e);
-  if (overCoffee(m)) tryDrink();
-  else if (game.fox && Math.abs(m.x - game.fox.x) < 45 && m.y > ICE_TOP - 70 && m.y < ICE_TOP + 10) shoo();
+  if (game.fox && Math.abs(m.x - game.fox.x) < 45 && m.y > ICE_TOP - 70 && m.y < ICE_TOP + 10) shoo();
 });
-canvas.addEventListener('mousemove', e => { canvas.style.cursor = (mode === 'play' && overCoffee(toLogical(e))) ? 'pointer' : 'default'; });
+
 
 $('btnStart').addEventListener('click', e => { e.currentTarget.blur(); startGame(); });
 $('btnAgain').addEventListener('click', e => { e.currentTarget.blur(); startGame(); });
@@ -2156,16 +2080,20 @@ $('btnShop2').addEventListener('click', e => { e.currentTarget.blur(); openShop(
 $('btnShopBack').addEventListener('click', e => { e.currentTarget.blur(); closeShop(); });
 $('btnReset').addEventListener('click', e => {
   e.currentTarget.blur();
-  best = { score: 0 }; saveBest(); board = []; saveBoard(); showTitle();
+  best = { score: 0 }; saveBest(); board = []; currentEntry = null; saveBoard(); showTitle();
 });
 
 // ---------------------------------------------------------------------
 // Størrelse og hovedløkke
 // ---------------------------------------------------------------------
 function resize() {
-  const vw = innerWidth, vh = innerHeight;
-  let cw = vw, ch = cw * H / W;
-  if (ch > vh) { ch = vh; cw = ch * W / H; }
+  const wrap = $('stageWrap');
+  const top = wrap.getBoundingClientRect().top + window.scrollY;
+  let cw = wrap.clientWidth;
+  const availH = Math.max(340, innerHeight - top - 18);          // scenen skal passe i høyden uten å scrolle
+  if (cw * H / W > availH) cw = availH * W / H;
+  cw = Math.max(320, Math.floor(cw));
+  const ch = Math.round(cw * H / W);
   stage.style.width = cw + 'px'; stage.style.height = ch + 'px';
   stage.style.setProperty('--u', (cw / W) + 'px');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -2174,6 +2102,8 @@ function resize() {
   buildBackground();
 }
 addEventListener('resize', resize);
+addEventListener('load', () => { resize(); setTimeout(resize, 300); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
 
 // Berøringsknapper (kun på touch-enheter)
 const isTouch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
@@ -2192,6 +2122,88 @@ function bindTouch(id, key, extra) {
 bindTouch('tcL', 'left'); bindTouch('tcR', 'right'); bindTouch('tcU', 'up'); bindTouch('tcD', 'down');
 bindTouch('tcA', 'space'); bindTouch('tcK', null, tryDrink); bindTouch('tcF', null, shoo);
 
+// ---------------------------------------------------------------------
+// Statuskort rundt scenen (DOM): tid, kroppstemperatur, poeng, fangst osv.
+// ---------------------------------------------------------------------
+const dom = {};
+['hudTime', 'hudTimeSub', 'hudTemp', 'hudCold', 'hudTempBar', 'chipCoffee', 'hudScore', 'hudLevel', 'hudLevelBar', 'nowTag', 'nowText', 'nowBar',
+ 'catchChips', 'catchCount', 'sceneL', 'sceneR', 'chipWallet', 'btnPause', 'btnMute'].forEach(id => dom[id] = $(id));
+let domT = 0, lastCatchVer = -1;
+const mmss = sec => { const r = Math.ceil(Math.max(0, sec)); return String(Math.floor(r / 60)).padStart(2, '0') + ':' + String(r % 60).padStart(2, '0'); };
+
+function fishSvg(T) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 40 20'); svg.setAttribute('width', '30'); svg.setAttribute('height', '15');
+  const p = document.createElementNS(ns, 'path');
+  p.setAttribute('d', T.key === 'stovel' ? 'M12 2 H22 V11 L34 14 V18 H10 Z' : 'M2 10 C10 1 24 1 31 8 L38 2 L36 10 L38 18 L31 12 C24 19 10 19 2 10 Z');
+  p.setAttribute('fill', T.body); svg.appendChild(p);
+  if (T.key !== 'stovel') { const b = document.createElementNS(ns, 'path'); b.setAttribute('d', 'M4 11 C12 17 24 17 30 12 C24 14 10 14 4 11 Z'); b.setAttribute('fill', T.belly); svg.appendChild(b); }
+  return svg;
+}
+
+function updateDom(dt) {
+  domT -= dt; if (domT > 0) return; domT = .1;
+  const playing = mode === 'play' || mode === 'frozen' || mode === 'over';
+  const left = playing ? Math.max(0, ROUND_TIME - game.time) : ROUND_TIME;
+  dom.hudTime.textContent = mmss(left);
+  dom.hudTime.classList.toggle('low', playing && left < 30);
+  dom.hudTimeSub.textContent = 'Fisket ' + fmt1(Math.min(5, (ROUND_TIME - left) / GAME_HOUR)) + ' t · Igjen ' + fmt1(left / GAME_HOUR) + ' t';
+
+  const temp = bodyTemp(), tf = clamp((temp - TEMP_DEAD) / (TEMP_NORMAL - TEMP_DEAD), 0, 1);
+  dom.hudTemp.textContent = fmt1(temp) + ' °C';
+  dom.hudCold.textContent = 'kulde ' + fmt1(Math.min(game.cold, MAX_COLD)) + ' / 5 t';
+  dom.hudTempBar.style.width = (tf * 100) + '%';
+  dom.hudTempBar.style.backgroundSize = (100 / Math.max(tf, .05)) + '% 100%';
+  dom.chipCoffee.textContent = '☕ ' + game.coffee + (game.coffee === 1 ? ' kopp' : ' kopper') + ' (K)';
+  dom.chipCoffee.disabled = game.coffee <= 0;
+  dom.chipCoffee.classList.toggle('hot', mode === 'play' && game.cold >= 3.6 && game.coffee > 0);
+
+  const need = levelNeed(game.level), prev = game.level > 1 ? levelNeed(game.level - 1) : 0;
+  const pf = clamp((game.score - prev) / (need - prev), 0, 1);
+  dom.hudScore.textContent = Math.floor(game.score);
+  dom.hudLevel.textContent = 'Nivå ' + game.level + ' · ' + Math.floor(game.score) + ' / ' + need;
+  dom.hudLevelBar.style.width = (pf * 100) + '%';
+
+  // «Akkurat nå»
+  let tag = 'KLAR', text = getHint(), bar = pf;
+  if (mode === 'title') { text = 'Trykk «Start Isfiske» for å begynne.'; bar = 0; }
+  else if (mode === 'frozen' || mode === 'over') { tag = 'SLUTT'; text = game.endReason === 'frozen' ? 'Du frøs i hjel. Prøv igjen!' : 'Tiden er ute. Bra fisket!'; bar = 1; }
+  else if (paused) { tag = 'PAUSE'; text = 'Alt er rolig. Trykk P for å fortsette.'; }
+  else if (game.fight) { tag = 'KAMP'; bar = clamp(game.fight.progress, 0, 1); }
+  else if (player.drill > .001) { tag = 'BORER'; bar = player.drill; }
+  else if (player.state === 'fish') { tag = game.jigE > .05 ? 'PILKER' : 'FISKER'; bar = game.jigE; }
+  else if (game.storm > 0) tag = 'STORM';
+  dom.nowTag.textContent = tag; dom.nowText.textContent = text; dom.nowBar.style.width = (bar * 100) + '%';
+
+  // Dagens fangst
+  if (game.catchVer !== lastCatchVer) {
+    lastCatchVer = game.catchVer;
+    const items = game.catchLog.slice(-14), box = dom.catchChips;
+    box.textContent = '';
+    if (!items.length) { const n = document.createElement('span'); n.className = 'note'; n.textContent = 'Ingen fangst ennå – bor et hull og pilk!'; box.appendChild(n); }
+    items.forEach(it => {
+      const c = document.createElement('span'); c.className = 'fchip' + (it.stolen ? ' stolen' : '');
+      c.appendChild(fishSvg(FISH[it.key]));
+      c.appendChild(document.createTextNode('+' + it.pts));
+      c.title = FISH[it.key].name + (it.stolen ? ' (stjålet av reven)' : '');
+      box.appendChild(c);
+    });
+    const n = game.catchLog.filter(i => !i.stolen).length;
+    dom.catchCount.textContent = n + ' FISK';
+  }
+
+  // Scenelabels og topplinje
+  dom.sceneL.textContent = 'INNSJØEN · VINTER' + (playing ? ' · NIVÅ ' + game.level : '');
+  dom.sceneR.textContent = Math.round(outsideTemp()) + ' °C · ' + (game.storm > 0 ? 'SNØSTORM' : game.wind);
+  dom.chipWallet.textContent = walletText();
+  dom.btnPause.textContent = paused ? 'FORTSETT' : 'PAUSE';
+  dom.btnMute.textContent = muted ? 'LYD AV' : 'LYD PÅ';
+}
+dom.chipCoffee.addEventListener('click', e => { e.currentTarget.blur(); tryDrink(); });
+dom.btnPause.addEventListener('click', e => { e.currentTarget.blur(); togglePause(); });
+dom.btnMute.addEventListener('click', e => { e.currentTarget.blur(); toggleMute(); });
+
 let last = 0;
 function frame(ts) {
   const wantTouch = isTouch && mode === 'play';
@@ -2200,6 +2212,7 @@ function frame(ts) {
   last = ts;
   update(dt);
   render();
+  updateDom(dt);
   requestAnimationFrame(frame);
 }
 
@@ -2208,7 +2221,7 @@ loadBoard();
 loadShop();
 $('nameIn').addEventListener('input', e => {
   lastName = (e.target.value.trim() || 'Spiller').slice(0, 12);
-  if (currentEntry) { currentEntry.name = lastName; saveBoard(); renderBoard($('lbEnd'), currentEntry); }
+  if (currentEntry) { currentEntry.name = lastName; saveBoard(); refreshBoard(); }
   else saveBoard();
 });
 resetGame();
