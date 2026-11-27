@@ -23,7 +23,7 @@ const RARE_PTS = 50;                  // fisk med minst så mange poeng er "sjel
 const TEMP_NORMAL = 37.0, TEMP_DEAD = 28.0;   // kroppstemperatur (°C) ved start og ved død
 const bodyTemp = () => TEMP_NORMAL - clamp(game.cold / 5, 0, 1) * (TEMP_NORMAL - TEMP_DEAD);
 const ROUND_TIME = 5 * GAME_HOUR;     // runden varer 5 spilltimer = 5 minutter
-const levelNeed = L => 50 * L * (L + 1);   // totalpoeng som trengs for å nå nivå L+1: 100, 300, 600, 1000 …
+const levelNeed = L => 30 * L * (L + 1);   // totalpoeng som trengs for å nå nivå L+1: 60, 180, 360, 600, 900 …
 const MAX_COLD = 5;                   // 5 timer uten varme = død
 const COFFEE_HEAT = 3;                // en kopp kaffe tar kulden 3 timer tilbake
 const DRILL_TIME = 2.5;               // sekunder å bore et hull
