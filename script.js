@@ -217,12 +217,12 @@ let best = { score: 0 };
 // Butikk: poeng fra rundene samles i en lommebok og brukes på bedre utstyr (lagres i nettleseren)
 const SHOP = {
   rod:     { name: 'Fiskestang', tiers: [
-    { name: 'Glassfiberstang', price: 300,  desc: '+15 % sveivekraft' },
-    { name: 'Teleskopstang',   price: 900,  desc: '+30 % sveivekraft og +10 % bitelyst' },
-    { name: 'Mesterstang',     price: 2000, desc: '+45 % sveivekraft, +20 % bitelyst og bedre pilking' } ] },
+    { name: 'Glassfiberstang', price: 300,  desc: '+15 % sveivekraft. Sjeldne fisker biter 20 % lettere og er 35 % vanligere' },
+    { name: 'Teleskopstang',   price: 900,  desc: '+30 % sveivekraft, +10 % bitelyst. Sjeldne fisker biter 40 % lettere og er 70 % vanligere' },
+    { name: 'Mesterstang',     price: 2000, desc: '+45 % sveivekraft, +20 % bitelyst. Sjeldne fisker biter 60 % lettere og er 105 % vanligere' } ] },
   jig:     { name: 'Pilk', tiers: [
-    { name: 'Gullpilk',     price: 350,  desc: '+15 % mer effekt når du pilker' },
-    { name: 'Diamantpilk',  price: 1100, desc: '+30 % mer effekt når du pilker' } ] },
+    { name: 'Gullpilk',     price: 350,  desc: '+15 % pilkeeffekt. Sjeldne fisker biter 12 % lettere og er 25 % vanligere' },
+    { name: 'Diamantpilk',  price: 1100, desc: '+30 % pilkeeffekt. Sjeldne fisker biter 24 % lettere og er 50 % vanligere' } ] },
   auger:   { name: 'Isbor', tiers: [
     { name: 'Kraftig isbor', price: 400,  desc: 'Bor hull på 1,9 sekunder' },
     { name: 'Motorbor',      price: 1200, desc: 'Bor hull på 1,2 sekunder' } ] },
@@ -303,9 +303,11 @@ function pickFishKey() {
   fishes.forEach(f => counts[f.key] = (counts[f.key] || 0) + 1);
   let total = 0;
   const cand = FISH_KEYS.filter(k => (counts[k] || 0) < FISH[k].max && (FISH[k].minLevel || 1) <= game.level);
-  cand.forEach(k => total += FISH[k].weight);
+  // Bedre stang og pilk gjør at sjeldne arter er vanligere i innsjøen
+  const wt = k => FISH[k].weight * (FISH[k].pts >= RARE_PTS ? 1 + .35 * shop.rod + .25 * shop.jig : 1);
+  cand.forEach(k => total += wt(k));
   let r = Math.random() * total;
-  for (const k of cand) { r -= FISH[k].weight; if (r <= 0) return k; }
+  for (const k of cand) { r -= wt(k); if (r <= 0) return k; }
   return cand[0] || 'abbor';
 }
 
@@ -333,7 +335,7 @@ function updateFish(f, dt, hook) {
   let target = f.baseY, ease = 22, attracted = false;
   const T = f.T;
 
-  if (hook && f.cooldown <= 0 && Math.abs(hook.x - f.x) < 230 + 140 * hook.e && Math.abs(hook.y - f.baseY) < (T.tol || 85) * (1 + .4 * hook.e)) {   // pilking lokker fisk fra lenger unna
+  if (hook && f.cooldown <= 0 && Math.abs(hook.x - f.x) < 230 + 140 * hook.e && Math.abs(hook.y - f.baseY) < (T.tol || 85) * (1 + .4 * hook.e) * (T.pts >= RARE_PTS ? 1 + .12 * shop.rod + .1 * shop.jig : 1)) {   // pilking lokker fisk fra lenger unna
     attracted = true;
     target = hook.y; ease = 45;
     const dxC = hook.x - f.x;
@@ -346,8 +348,8 @@ function updateFish(f, dt, hook) {
     const mouthX = f.x + f.dir * f.L * .5;
     if (Math.abs(mouthX - hook.x) < 16 && Math.abs(f.y - hook.y) < 16) {
       f.hover += dt; game.nibble = 1;
-      if (Math.random() < T.bite * biteFactor(hook.e) * (game.level >= 4 && T.pts >= RARE_PTS ? 1.2 : 1) / (1 + .2 * (game.level - 1)) * dt) { startFight(f); return; }   // blinkende pilk: +20 % på sjeldne fisker   // biter sjeldnere på høyere nivå
-      if (f.hover > (T.pts >= RARE_PTS ? 2.5 : 4)) { f.cooldown = 8; f.hover = 0; f.dir = -f.dir; }   // mistet interessen
+      if (Math.random() < T.bite * biteFactor(hook.e) * (game.level >= 4 && T.pts >= RARE_PTS ? 1.2 : 1) * (T.pts >= RARE_PTS ? 1 + .2 * shop.rod + .12 * shop.jig : 1) / (1 + .2 * (game.level - 1)) * dt) { startFight(f); return; }   // blinkende pilk: +20 % på sjeldne fisker   // biter sjeldnere på høyere nivå
+      if (f.hover > (T.pts >= RARE_PTS ? 2.5 + .4 * (shop.rod + shop.jig) : 4)) { f.cooldown = 8; f.hover = 0; f.dir = -f.dir; }   // mistet interessen
     } else f.hover = Math.max(0, f.hover - dt);
   }
 
