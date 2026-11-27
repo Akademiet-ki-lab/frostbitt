@@ -2090,7 +2090,7 @@ function resize() {
   const wrap = $('stageWrap');
   const top = wrap.getBoundingClientRect().top + window.scrollY;
   let cw = wrap.clientWidth;
-  const availH = Math.max(340, innerHeight - top - 18);          // scenen skal passe i høyden uten å scrolle
+  const availH = Math.max(340, innerHeight - top - 10);          // scenen skal passe i høyden uten å scrolle
   if (cw * H / W > availH) cw = availH * W / H;
   cw = Math.max(320, Math.floor(cw));
   const ch = Math.round(cw * H / W);
